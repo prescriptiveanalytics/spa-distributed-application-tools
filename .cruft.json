@@ -1,0 +1,21 @@
+{
+  "template": "https://github.com/RISCSoftware/cookiecutter-python-package",
+  "commit": "be02432270358ba129ff2493208fba2058461729",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "package_name": "SPA Distributed Application Tools",
+      "package_description": "This package provides a wrapper for the message based communication of distributed application",
+      "package_url": "https://github.com/prescriptiveanalytics/spa-distributed-application-tools",
+      "author_name": "Dominik Falkner",
+      "author_email": "dominik.falkner@risc-software.at",
+      "python_version": "3.11",
+      "docstring_style": "Google",
+      "use_conventional_commits": "True",
+      "__package_name_kebab_case": "spa-distributed-application-tools",
+      "__package_name_snake_case": "spa_distributed_application_tools",
+      "_template": "https://github.com/RISCSoftware/cookiecutter-python-package"
+    }
+  },
+  "directory": null
+}

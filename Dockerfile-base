@@ -1,0 +1,57 @@
+# This dockerfile serves as a base for all testing images.
+# It contains the minimal dependencies and is therefore smaller.
+from debian:stable-slim
+ARG PYTHON_VERSION=3.11
+ARG POETRY_VERSION=1.5.1
+
+ENV DEBIAN_FRONTEND noninteractive
+LABEL maintainer="Dominik Falkner <dominik.falkner@risc-software.at>"
+
+RUN apt-get update && apt-get install -yq \ 
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    curl \ 
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
+    libffi-dev \
+    liblzma-dev \
+    git \
+    python3-distutils \
+    && rm -rf /var/lib/apt/lists/*
+    
+ENV PYENV_ROOT $HOME/.pyenv
+ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+
+# Install pyenv
+RUN set -ex \
+    && curl https://pyenv.run | bash \
+    && pyenv update \
+    && eval "$(pyenv init -)" && pyenv --version
+
+# Install python and set interpreter
+RUN pyenv install -s ${PYTHON_VERSION} && pyenv global ${PYTHON_VERSION}
+
+# Install and configure Poetry
+ENV POETRY_VERSION=${POETRY_VERSION} \
+    POETRY_HOME=/opt/poetry \
+    POETRY_VIRTUALENVS_CREATE=false
+RUN curl -sSL https://install.python-poetry.org | python -
+ENV PATH="${PATH}:${POETRY_HOME}/bin"
+
+# Setup directory structure
+RUN mkdir /repo
+WORKDIR /repo
+
+# Install dependencies (package itself is not installed)
+COPY pyproject.toml poetry.lock .
+RUN poetry install --without dev --all-extras --no-root
+
+# Copy the rest of the repository
+ADD . .

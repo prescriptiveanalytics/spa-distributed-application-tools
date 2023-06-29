@@ -1,0 +1,91 @@
+# Compiled
+*.so 
+
+# Coverage.py
+htmlcov/
+reports/
+
+# cruft
+*.rej
+
+# Data
+*.csv*
+*.dat*
+*.pickle*
+*.xls*
+*.zip*
+data/
+output/
+
+# direnv
+.envrc
+
+# dotenv
+.env
+
+# Hypothesis
+.hypothesis/
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+notebooks/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# mkdocs documentation
+/site
+
+# macOS
+.DS_Store
+
+# mypy
+.dmypy.json
+.mypy_cache/
+
+# Node.js
+node_modules/
+
+# Poetry
+.venv/
+dist/
+
+# PyCharm
+.idea/
+
+# pyenv
+.python-version
+
+# pytest
+.pytest_cache/
+
+# Python
+__pycache__/
+*.py[cdo]
+*$py.class
+
+# Ruff
+.ruff_cache/
+
+# Terraform
+.terraform/
+
+# VS Code
+.vscode/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+*-junit.xml

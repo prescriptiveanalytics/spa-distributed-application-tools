@@ -1,0 +1,92 @@
+# https://python-poetry.org/docs/pyproject/#poetry-and-pep-517
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# https://python-poetry.org/docs/pyproject/
+[tool.poetry]
+name = "spa-distributed-application-tools"
+version = "0.0.1"
+description = "This package provides a wrapper for the message based communication of distributed application"
+authors = [
+  "Dominik Falkner <dominik.falkner@risc-software.at>"
+]
+readme = "README.MD"
+repository = "https://github.com/prescriptiveanalytics/spa-distributed-application-tools"
+packages = [
+  { include = "spa_distributed_application_tools" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+# https://python-poetry.org/docs/dependency-specification/
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]  
+# https://python-poetry.org/docs/master/managing-dependencies/
+poethepoet = "^0.20.0"
+black = { version = "^23.3.0", extras = ["jupyter"] }
+ruff = "^0.0.272"
+pytest = "^7.3.2"
+pytest-clarity = "^1.0.1"
+pytest-cov = "4.1.0"
+pytest-xdist = "^3.3.1"
+mkdocs = "^1.4.3"
+mkdocs-material = "^9.1.15"
+mkdocstrings = {extras = ["python"], version = "^0.22.0"}
+commitizen = "^3.2.2"
+isort = "^5.12.0"
+
+[tool.poe.tasks]
+# https://github.com/nat-n/poethepoet
+_format = "black ."
+_sort_imports = "isort ."
+_lint = "ruff check --fix ."
+
+_check_format = "black --check ."
+_check_sort_imports = "isort --check ."
+_check_lint = "ruff check ."
+
+docs = "mkdocs serve"
+precommit = ["_format", "_sort_imports", "_lint"]
+check = ["_check_format", "_check_sort_imports", "_check_lint"]
+test = "pytest"
+
+# https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
+[tool.black]
+line-length = 120
+
+# https://pycqa.github.io/isort/docs/configuration/config_files
+[tool.isort]
+profile = "black"
+
+# https://docs.pytest.org/en/7.1.x/reference/customize.html
+[tool.pytest.ini_options]
+addopts = "--color=yes --doctest-modules  -ra --cov --cov-report=html --cov-report term --exitfirst --failed-first --strict-config --strict-markers --verbosity=2 --junitxml=python-junit.xml"
+xfail_strict = true
+pythonpath = ["spa_distributed_application_tools"]
+testpaths = ["spa_distributed_application_tools", "tests"]
+# ignore any of these paths
+norecursedirs = [ ]
+
+# https://github.com/charliermarsh/ruff
+[tool.ruff]  
+fix = true
+ignore-init-module-imports = true
+line-length = 120
+src = ["spa_distributed_application_tools", "tests"]
+
+[tool.ruff.pycodestyle]
+max-doc-length = 120
+
+[tool.ruff.pydocstyle]
+convention = "google"
+# https://commitizen-tools.github.io/commitizen/config/
+[tool.commitizen]
+bump_message = "bump(release): v$current_version → v$new_version"
+tag_format = "v$version"
+update_changelog_on_bump = true
+version = "0.0.1"
+version_files = ["pyproject.toml:version"]

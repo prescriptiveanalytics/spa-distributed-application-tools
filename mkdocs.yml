@@ -1,0 +1,19 @@
+site_name: spa-distributed-application-tools Documentation
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+            - https://docs.python-requests.org/en/master/objects.inv
+          paths: [.]
+          options:
+            docstring_style: google
+            show_submodules: true
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: false
