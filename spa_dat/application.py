@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import AsyncExitStack
 import logging
 from typing import Protocol
 
@@ -37,7 +38,7 @@ class ApplicationLifeCycle(Protocol):
         raise NotImplementedError()
 
 
-class DistributedApplication(ApplicationLifeCycle):
+class ProducerApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It connects to a given message bus and provides a services for handling messages.
@@ -60,7 +61,7 @@ class DistributedApplication(ApplicationLifeCycle):
         pass
 
 
-class ProducerApplication(ApplicationLifeCycle):
+class DistributedApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It provides a service for handling messages.
@@ -76,6 +77,8 @@ class ProducerApplication(ApplicationLifeCycle):
         self.callback = callback
         self.config = config
         self.queue_in = asyncio.Queue()
+        self.exit_stack = AsyncExitStack()
+        self.ressources = []
 
     def startup(self):
         logger.info("[Startup] Application")
@@ -85,17 +88,26 @@ class ProducerApplication(ApplicationLifeCycle):
         asyncio.run(self._run())
 
     async def _run(self):
-        try:
-            self.startup()
-            # subscribe to topics
-            self.message_service.subscribe(self.message_service.config.topic)
+        self.startup()
+
+        async with self.exit_stack:
+            # enter fixed context
+            await self.exit_stack.enter_async_context(self.message_service)
+            
+            # enter dynamic context
+            for ressource in self.ressources:
+                await self.exit_stack.enter_async_context(ressource)
+
+            # shut down after leaving context
+            self.exit_stack.callback(self.shutdown)
+
+            # subscribe to topic
+            await self.message_service.subscribe(self.config.topic)
             
             # read and handle messages
             while True:
                 message = await self.queue_in.get()
                 await self.callback(message, DistributedApplicationContext(self.message_service))
-        finally:
-            self.shutdown()
 
     def shutdown(self):
         logger.info("[Shutdown] Application")
