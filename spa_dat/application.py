@@ -1,5 +1,5 @@
 import asyncio
-from contextlib import AsyncExitStack
+from contextlib import AbstractAsyncContextManager, AsyncExitStack
 import logging
 from typing import Protocol
 
@@ -19,7 +19,7 @@ class DistributedApplicationContext:
 
 
 class ApplicationLifeCycle(Protocol):
-    def startup(self):
+    def setup(self):
         """
         Perform initialization tasks, such as setting up resources and dependencies
         """
@@ -31,7 +31,7 @@ class ApplicationLifeCycle(Protocol):
         """
         raise NotImplementedError()
 
-    def shutdown(self):
+    def teardown(self):
         """
         Handle cleanup
         """
@@ -48,7 +48,7 @@ class ProducerApplication(ApplicationLifeCycle):
 
     message_service: SpaProtocol = None
 
-    def startup(self):
+    def setup(self):
         # TODO: INIT service
         pass
 
@@ -56,7 +56,7 @@ class ProducerApplication(ApplicationLifeCycle):
         # start async loop
         pass
 
-    def shutdown(self):
+    def teardown(self):
         # close async loop for service
         pass
 
@@ -66,6 +66,12 @@ class DistributedApplication(ApplicationLifeCycle):
     This provides a simple class for implementing a distributed application.
     It provides a service for handling messages.
     It calls a callback directly, which can produce arbitary messages. After which the service stops.
+    
+    Attributes:
+        callback: A callback which is called upon receiving a message.
+        config: The configuration for the message bus. Can be any of the supported config types.
+        ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited. This adds support for async ressources.
+        _queue_in (asyncio.Queue): A queue for receiving messages from the message bus.
     """
 
     message_service: SpaProtocol = None
@@ -76,19 +82,30 @@ class DistributedApplication(ApplicationLifeCycle):
         # ...
         self.callback = callback
         self.config = config
-        self.queue_in = asyncio.Queue()
+        self._queue_in = asyncio.Queue()
         self.exit_stack = AsyncExitStack()
-        self.ressources = []
+        
+        self.ressources: AbstractAsyncContextManager = []
 
-    def startup(self):
+    def setup(self):
+        """
+        Method for initializing non async components/ressources of the application.
+        """
         logger.info("[Startup] Application")
-        self.message_service = MqttService(self.config, self.queue_in)
+        self.message_service = MqttService(self.config, self._queue_in)
 
     def run(self):
-        asyncio.run(self._run())
+        """
+            Start the Application and initialize the default asyncio loop
+        """
+        asyncio.run(self.run_async())
 
-    async def _run(self):
-        self.startup()
+    async def run_async(self):
+        """
+            Start the Application and initialize the default asyncio loop.
+            Initialize the application and its ressources.
+        """
+        self.setup()
 
         async with self.exit_stack:
             # enter fixed context
@@ -99,15 +116,18 @@ class DistributedApplication(ApplicationLifeCycle):
                 await self.exit_stack.enter_async_context(ressource)
 
             # shut down after leaving context
-            self.exit_stack.callback(self.shutdown)
+            self.exit_stack.callback(self.teardown)
 
             # subscribe to topic
             await self.message_service.subscribe(self.config.topic)
             
             # read and handle messages
             while True:
-                message = await self.queue_in.get()
+                message = await self._queue_in.get()
                 await self.callback(message, DistributedApplicationContext(self.message_service))
 
-    def shutdown(self):
+    def teardown(self):
+        """
+        Method for cleanup non async components/ressources of the application.
+        """
         logger.info("[Shutdown] Application")
