@@ -5,7 +5,10 @@ build-backend = "poetry.core.masonry.api"
 
 # https://python-poetry.org/docs/pyproject/
 [tool.poetry]
-name = "spa-distributed-application-tools"
+name = "spa-dat"
+packages = [
+  { include = "spa_dat" }
+]
 version = "0.0.1"
 description = "This package provides a wrapper for the message based communication of distributed application"
 authors = [
@@ -13,9 +16,6 @@ authors = [
 ]
 readme = "README.MD"
 repository = "https://github.com/prescriptiveanalytics/spa-distributed-application-tools"
-packages = [
-  { include = "spa_distributed_application_tools" }
-]
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
@@ -23,6 +23,9 @@ classifiers = [
 # https://python-poetry.org/docs/dependency-specification/
 [tool.poetry.dependencies]
 python = "^3.11"
+aiomqtt = "^1.0.0"
+pydantic = "^2.0.3"
+backoff = "^2.2.1"
 
 [tool.poetry.group.dev.dependencies]  
 # https://python-poetry.org/docs/master/managing-dependencies/
