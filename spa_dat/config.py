@@ -2,6 +2,7 @@ import uuid
 
 from pydantic.dataclasses import dataclass
 
+
 @dataclass
 class MqttConfig:
     host: str

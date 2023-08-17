@@ -1,7 +1,8 @@
 from typing import Protocol
-from pydantic import BaseModel, model_serializer
 
+from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
+
 
 @dataclass
 class SpaProtocol(Protocol):
