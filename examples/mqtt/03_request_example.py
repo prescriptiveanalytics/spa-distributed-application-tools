@@ -19,7 +19,7 @@ async def producer_callback(context: DistributedApplicationContext):
         logger.debug("Sending Request")
         response = await context.message_service.request(
             SpaMessage(
-                client_id=f"spa-dat-producer",
+                client_id="spa-dat-producer",
                 client_name="spa-dat-producer",
                 content_type="application/json",
                 payload=f"Producer Message {i}",
@@ -45,7 +45,8 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
             topic=message.response_topic,
         )
     )
-    
+
+
 def run_consumer():
     consumer = DistributedApplication(
         consumer_callback,
@@ -57,6 +58,7 @@ def run_consumer():
     )
     consumer.run()
 
+
 def run_producer():
     producer = ProducerApplication(
         producer_callback,
@@ -67,14 +69,15 @@ def run_producer():
     )
     producer.run()
 
+
 def main():
     """
     Run this example twice in two different terminals. One as consumer and one as producer.
     """
     logging.basicConfig(level=logging.DEBUG)
-    if sys.argv[1] == 'consumer':
+    if sys.argv[1] == "consumer":
         run_consumer()
-    if sys.argv[1] == 'producer':
+    if sys.argv[1] == "producer":
         run_producer()
     else:
         logger.error("Please specify either 'consumer' or 'producer' as argument")

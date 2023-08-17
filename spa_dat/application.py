@@ -6,8 +6,8 @@ from typing import Callable, Protocol
 from pydantic.dataclasses import dataclass
 
 from spa_dat.config import MqttConfig
+from spa_dat.protocol.mqtt import MqttService
 from spa_dat.protocol.spa import SpaMessage, SpaProtocol
-from spa_dat.service.mqtt import MqttService
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class DistributedApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It provides a service for handling messages.
-    It calls a callback directly, which can produce and read messages. 
+    It calls a callback directly, which can produce and read messages.
     This service runs in an endless loop until stopped by the user.
 
     Attributes:
@@ -114,16 +114,18 @@ class DistributedApplication(ApplicationLifeCycle):
 
     message_service: SpaProtocol = None
 
-    def __init__(self, async_callback, config: MqttConfig) -> None:
+    def __init__(
+        self, async_callback, config: MqttConfig, async_ressources: list[AbstractAsyncContextManager] = []
+    ) -> None:
         super().__init__()
-        # TODO: Build message service from config
-        # ...
         self.callback = async_callback
         self.config = config
         self._queue_in = asyncio.Queue()
         self.exit_stack = AsyncExitStack()
 
-        self.ressources: list[AbstractAsyncContextManager] = []
+        # Any async context manager can be added here, these will be entered and exited
+        # during the main loop
+        self.async_ressources: list[AbstractAsyncContextManager] = async_ressources
 
     def setup(self):
         """
@@ -150,7 +152,7 @@ class DistributedApplication(ApplicationLifeCycle):
             await self.exit_stack.enter_async_context(self.message_service)
 
             # enter dynamic context
-            for ressource in self.ressources:
+            for ressource in self.async_ressources:
                 await self.exit_stack.enter_async_context(ressource)
 
             # shut down after leaving context

@@ -68,11 +68,11 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         self.message_queue = message_queue
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
-        self._client_config = self.build_client_config()        
+        self._client_config = self.build_client_config()
         self.client = aiomqtt.Client(**self._client_config)
         self.reader_task = None
         self.subscriptions: dict[str, asyncio.Task] = {}
-        
+
     def build_client_config(self, client_id: str | None = None) -> dict:
         """
         Build a client config for a new client. The client_id is overwritten from the default if specified.
@@ -128,7 +128,7 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         ephemeral_response_topic = self._get_ephemeral_response_topic(message.topic)
 
         # we must build a new client .. otherwise the background listener will receive the response
-        config = self.build_client_config(client_id=f"{self.mqtt_config.client_id}-response-{uuid.uuid4()}")        
+        config = self.build_client_config(client_id=f"{self.mqtt_config.client_id}-response-{uuid.uuid4()}")
         async with aiomqtt.Client(**config) as client:
             await client.subscribe(ephemeral_response_topic)
 
