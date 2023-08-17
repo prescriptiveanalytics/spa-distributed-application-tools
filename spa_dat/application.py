@@ -101,7 +101,8 @@ class DistributedApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It provides a service for handling messages.
-    It calls a callback directly, which can produce arbitary messages. After which the service stops.
+    It calls a callback directly, which can produce and read messages. 
+    This service runs in an endless loop until stopped by the user.
 
     Attributes:
         async_callback: A callback which is called upon receiving a message.

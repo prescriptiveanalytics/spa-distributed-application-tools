@@ -29,7 +29,6 @@ class SpaMessage(BaseModel):
     Defines the message for SPA applications
     """
 
-    client_id: str
     client_name: str
     content_type: str
     payload: bytes

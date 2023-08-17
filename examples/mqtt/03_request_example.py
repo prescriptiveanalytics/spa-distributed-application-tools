@@ -39,7 +39,6 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
 
     await context.message_service.publish(
         SpaMessage(
-            client_id=context.message_service.mqtt_config.client_id,
             client_name="spa-dat-responder",
             content_type="application/json",
             payload=f"Response Message for {message.payload}",
@@ -69,6 +68,9 @@ def run_producer():
     producer.run()
 
 def main():
+    """
+    Run this example twice in two different terminals. One as consumer and one as producer.
+    """
     logging.basicConfig(level=logging.DEBUG)
     if sys.argv[1] == 'consumer':
         run_consumer()

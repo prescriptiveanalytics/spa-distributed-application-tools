@@ -27,6 +27,9 @@ def _mqtt_message_decoder(message: aiomqtt.Message) -> SpaMessage:
 
 
 def _mqtt_message_encoder(message: SpaMessage) -> aiomqtt.Message:
+    """
+    Encodes the SpaMessage into a mqtt message.
+    """
     return message.model_dump_json().encode("utf-8")
 
 
@@ -108,7 +111,6 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         await self.client.publish(message.topic, payload=self.message_encoder(message), qos=message.quality_of_service)
 
     async def subscribe(self, topic: str) -> None:
-        # subscribe to topic
         await self.client.subscribe(topic, self.mqtt_config.qos)
         logger.info(f"Subscribed to topic: {topic}")
 
