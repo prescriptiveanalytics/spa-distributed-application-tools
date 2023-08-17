@@ -1,27 +1,34 @@
 import asyncio
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 import logging
+import uuid
 
 import aiomqtt
 import backoff
 
 from spa_dat.config import MqttConfig
-from spa_dat.protocol.spa import SpaProtocol
+from spa_dat.protocol.spa import SpaMessage, SpaProtocol
 
 logger = logging.getLogger(__name__)
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _subscribe(client: aiomqtt.Client, config: MqttConfig, topic: str, message_queue: asyncio.Queue):
+async def _read_messages(client: aiomqtt.Client, config: MqttConfig, topic: str, message_queue: asyncio.Queue):
     async with client.messages() as messages:
         async for message in messages:
             await message_queue.put(message)
+            
+@backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
+async def _read_single_message(client: aiomqtt.Client, config: MqttConfig, topic: str, message_queue: asyncio.Queue):
+    async with client.messages() as messages:
+        async for message in messages:
+            return message
 
 
 class MqttService(SpaProtocol, AbstractAsyncContextManager):
-    def __init__(self, config: MqttConfig, message_queue: asyncio.Queue) -> None:
+    def __init__(self, config: MqttConfig, message_queue: asyncio.Queue = None) -> None:
         self.mqtt_config = config
-        self.message_queue = message_queue
+        self.message_queue = message_queue if message_queue is not None else asyncio.Queue()
         self.client = aiomqtt.Client(
             hostname=config.host,
             port=config.port,
@@ -46,8 +53,8 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         await self.client.disconnect()
         return None
 
-    async def publish(self, topic: str, payload: bytes):
-        await self.client.publish(topic, payload=payload)
+    async def publish(self, message: SpaMessage):
+        await self.client.publish(message.topic, payload=message.model_dump_json().encode('utf-8'))
 
     async def subscribe(self, topic: str):
         # subscribe to topic
@@ -57,7 +64,7 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
 
         # spawn tasks which reads messages
         self.subscriptions[task_name] = asyncio.create_task(
-            _subscribe(self.client, self.mqtt_config, topic, self.message_queue), 
+            _read_messages(self.client, self.mqtt_config, topic, self.message_queue), 
             name=MqttService._get_task_name(task_name),
         )
 
@@ -71,5 +78,16 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         else:
             logger.info("No subscription to unsubscribe from. (searched for topic: {topic})")
 
-    async def request():
-        raise NotImplementedError()
+    def _get_ephemeral_response_topic(self, topic: str):
+        return f"{topic}/request/{uuid.uuid4()}"
+
+    async def request(self, topic: str, payload: bytes):
+        ephemeral_response_topic = self._get_ephemeral_response_topic(topic)
+        await self.subscribe(ephemeral_response_topic)
+        
+        # publish message and wait for response
+        await self.publish(topic, payload)
+        response = await _read_single_message(self.client, self.mqtt_config, ephemeral_response_topic, self.message_queue)
+        
+        await self.unsubscribe(ephemeral_response_topic)
+        return response

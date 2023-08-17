@@ -1,4 +1,5 @@
 from typing import Protocol
+from pydantic import BaseModel, model_serializer
 
 from pydantic.dataclasses import dataclass
 
@@ -19,3 +20,18 @@ class SpaProtocol(Protocol):
 
     async def request():
         raise NotImplementedError()
+
+
+class SpaMessage(BaseModel):
+    """
+    Defines the message for SPA applications
+    """
+
+    client_id: str
+    client_name: str
+    content_type: str
+    payload: bytes
+    topic: str
+    response_topic: str | None
+    quality_of_service: int
+    timestamp: int

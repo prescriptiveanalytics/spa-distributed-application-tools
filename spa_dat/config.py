@@ -6,7 +6,7 @@ from pydantic.dataclasses import dataclass
 class MqttConfig:
     host: str
     port: int
-    topic: str
+    default_subscription_topic: str | None = None
     keepalive: int = 60
     qos: int = 0
     retain = False
