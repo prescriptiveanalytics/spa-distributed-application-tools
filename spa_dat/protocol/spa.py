@@ -1,3 +1,4 @@
+import time
 from typing import Protocol
 
 from pydantic import BaseModel
@@ -33,6 +34,6 @@ class SpaMessage(BaseModel):
     content_type: str
     payload: bytes
     topic: str
-    response_topic: str | None
-    quality_of_service: int
-    timestamp: int
+    response_topic: str | None = None
+    quality_of_service: int = 0
+    timestamp: int = int(time.time())

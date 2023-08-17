@@ -1,9 +1,9 @@
 import asyncio
 import json
 import logging
-from typing import Callable
 import uuid
 from contextlib import AbstractAsyncContextManager
+from typing import Callable
 
 import aiomqtt
 import backoff
@@ -40,10 +40,17 @@ async def _read_messages(client: aiomqtt.Client, message_queue: asyncio.Queue, m
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _read_single_message(client: aiomqtt.Client, message_decoder: MessageDecoder) -> SpaMessage:
+async def _read_response_message(
+    client: aiomqtt.Client, ephemeral_response_topic: str, message_decoder: MessageDecoder
+) -> SpaMessage | None:
+    """
+    Read a response message from the given topic. Returns None if no message was received / could not be parsed.
+    Creates a new connection to avoid mixing messages with the default connection.
+    """
     async with client.messages() as messages:
         async for message in messages:
-            return message_decoder(message)
+            message = message_decoder(message)
+            return message
 
 
 class MqttService(SpaProtocol, AbstractAsyncContextManager):
@@ -58,16 +65,23 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         self.message_queue = message_queue
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
-        self.client = aiomqtt.Client(
-            hostname=config.host,
-            port=config.port,
-            keepalive=config.keepalive,
-            client_id=config.client_id,
-            username=config.username,
-            password=config.password,
-        )
+        self._client_config = self.build_client_config()        
+        self.client = aiomqtt.Client(**self._client_config)
         self.reader_task = None
         self.subscriptions: dict[str, asyncio.Task] = {}
+        
+    def build_client_config(self, client_id: str | None = None) -> dict:
+        """
+        Build a client config for a new client. The client_id is overwritten from the default if specified.
+        """
+        return dict(
+            hostname=self.mqtt_config.host,
+            port=self.mqtt_config.port,
+            keepalive=self.mqtt_config.keepalive,
+            client_id=self.mqtt_config.client_id if client_id is None else client_id,
+            username=self.mqtt_config.username,
+            password=self.mqtt_config.password,
+        )
 
     async def __aenter__(self):
         """Return `self` upon entering the runtime context."""
@@ -105,15 +119,25 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
     def _get_ephemeral_response_topic(self, topic: str) -> str:
         return f"{topic}/request/{uuid.uuid4()}"
 
-    async def request(self, topic: str, payload: bytes) -> SpaMessage:
-        ephemeral_response_topic = self._get_ephemeral_response_topic(topic)
-        await self.subscribe(ephemeral_response_topic)
+    async def request(self, message: SpaMessage) -> SpaMessage | None:
+        """
+        Publish a message and wait for a response. Returns none if no response was received / could not be parsed.
+        """
+        ephemeral_response_topic = self._get_ephemeral_response_topic(message.topic)
 
-        # publish message and wait for response
-        await self.publish(topic, payload)
-        response = await _read_single_message(
-            self.client, self.mqtt_config, ephemeral_response_topic, self.message_queue, self.message_decoder
-        )
+        # we must build a new client .. otherwise the background listener will receive the response
+        config = self.build_client_config(client_id=f"{self.mqtt_config.client_id}-response-{uuid.uuid4()}")        
+        async with aiomqtt.Client(**config) as client:
+            await client.subscribe(ephemeral_response_topic)
 
-        await self.unsubscribe(ephemeral_response_topic)
+            # start listener for response
+            listener = _read_response_message(client, ephemeral_response_topic, self.message_decoder)
+
+            # publish message and wait for response, set response topic
+            message.response_topic = ephemeral_response_topic
+            await self.publish(message)
+
+            # wait for response
+            response = await listener
+            await client.unsubscribe(ephemeral_response_topic)
         return response

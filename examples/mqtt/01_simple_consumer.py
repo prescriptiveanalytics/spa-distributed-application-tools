@@ -1,7 +1,5 @@
 import logging
 
-import aiomqtt
-
 from spa_dat.application import DistributedApplication, DistributedApplicationContext
 from spa_dat.config import MqttConfig
 from spa_dat.protocol.spa import SpaMessage
