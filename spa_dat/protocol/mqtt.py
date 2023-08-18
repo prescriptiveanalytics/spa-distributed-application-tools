@@ -71,7 +71,6 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
         self._client_config = self.build_client_config()
         self.client = aiomqtt.Client(**self._client_config)
         self.reader_task = None
-        self.subscriptions: dict[str, asyncio.Task] = {}
 
     def build_client_config(self, client_id: str | None = None) -> dict:
         """

@@ -10,11 +10,12 @@ packages = [
   { include = "spa_dat" }
 ]
 version = "0.1.0"
-description = "This package provides a wrapper for the message based communication of distributed application"
+description = "This package provides a wrapper for the message based communication of distributed applications"
 authors = [
   "Dominik Falkner <dominik.falkner@risc-software.at>"
 ]
 readme = "README.MD"
+license = "MIT"
 repository = "https://github.com/prescriptiveanalytics/spa-distributed-application-tools"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -26,6 +27,7 @@ python = "^3.11"
 aiomqtt = "^1.0.0"
 pydantic = "^2.0.3"
 backoff = "^2.2.1"
+aiokafka = "^0.8.1"
 
 [tool.poetry.group.dev.dependencies]  
 # https://python-poetry.org/docs/master/managing-dependencies/
@@ -86,6 +88,7 @@ max-doc-length = 120
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
 # https://commitizen-tools.github.io/commitizen/config/
 [tool.commitizen]
 bump_message = "bump(release): v$current_version → v$new_version"
