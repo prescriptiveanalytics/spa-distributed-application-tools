@@ -2,7 +2,8 @@ import logging
 
 from spa_dat.application import DistributedApplication, DistributedApplicationContext
 from spa_dat.protocol.mqtt import MqttConfig
-from spa_dat.protocol.spa import SpaMessage
+from spa_dat.protocol.typedef import SpaMessage
+from spa_dat.provider import SocketProviderFactory
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +16,12 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     app = DistributedApplication(
         consumer_callback,
-        MqttConfig(
-            host="mqtt-dashboard.com",
-            port=1883,
-            default_subscription_topic="test/spa-dat",
+        SocketProviderFactory.from_config(
+            MqttConfig(
+                host="mqtt-dashboard.com",
+                port=1883,
+                default_subscription_topic="test/spa-dat",
+            )
         ),
     )
     app.run()

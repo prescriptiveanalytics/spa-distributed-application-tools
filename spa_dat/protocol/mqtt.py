@@ -9,8 +9,7 @@ import aiomqtt
 import backoff
 from pydantic.dataclasses import dataclass
 
-from spa_dat.provider import SocketProvider
-from spa_dat.protocol.spa import SpaMessage, SpaProtocol
+from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 
@@ -57,34 +56,39 @@ async def _read_response_message(
             message = message_decoder(message)
             return message
 
+
 # endregion helper functions
+
 
 @dataclass
 class MqttConfig:
     host: str
     port: int
+    username = None
+    password = None
     default_subscription_topic: str | None = None  # if set to none no subscription will be made
     keepalive: int = 60
     qos: int = 0
     retain = False
-    username = None
-    password = None
     client_id: str = str(uuid.uuid4())
 
 
-class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
+class MqttSocket(SpaSocket, AbstractAsyncContextManager):
     """
     Defines an interface for an mqtt broker. It implements all necessary methods from the SpaProtocol.
     """
+
     def __init__(
         self,
         config: MqttConfig,
-        message_queue: asyncio.Queue,
+        message_queue: asyncio.Queue | None,
         message_decoder: MessageDecoder = _mqtt_message_decoder,
         message_encoder: MessageEncoder = _mqtt_message_encoder,
     ) -> None:
-        self.mqtt_config = config
-        self.message_queue = message_queue
+        self.config = config
+        # if no message queue is given create an internal one (for later access,
+        # it contains all messages which are received from the broker)
+        self.message_queue = message_queue if message_queue is not None else asyncio.Queue()
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
         self._client_config = self.build_client_config()
@@ -96,12 +100,12 @@ class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
         Build a client config for a new client. The client_id is overwritten from the default if specified.
         """
         return dict(
-            hostname=self.mqtt_config.host,
-            port=self.mqtt_config.port,
-            keepalive=self.mqtt_config.keepalive,
-            client_id=self.mqtt_config.client_id if client_id is None else client_id,
-            username=self.mqtt_config.username,
-            password=self.mqtt_config.password,
+            hostname=self.config.host,
+            port=self.config.port,
+            keepalive=self.config.keepalive,
+            client_id=self.config.client_id if client_id is None else client_id,
+            username=self.config.username,
+            password=self.config.password,
         )
 
     async def __aenter__(self):
@@ -109,10 +113,15 @@ class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
         await self.client.connect()
 
         # spawn tasks which reads messages
-        self.reader_task = asyncio.create_task(
-            _read_messages(self.client, self.message_queue, self.message_decoder),
-            name="task-mqtt-reader",
-        )
+        if self.reader_task is None:
+            self.reader_task = asyncio.create_task(
+                _read_messages(self.client, self.message_queue, self.message_decoder),
+                name="task-mqtt-reader",
+            )
+
+        # subscribe to default topic
+        if self.config.default_subscription_topic is not None:
+            await self.subscribe(self.config.default_subscription_topic)
 
         return self
 
@@ -129,7 +138,7 @@ class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
         await self.client.publish(message.topic, payload=self.message_encoder(message), qos=message.quality_of_service)
 
     async def subscribe(self, topic: str) -> None:
-        await self.client.subscribe(topic, self.mqtt_config.qos)
+        await self.client.subscribe(topic, self.config.qos)
         logger.info(f"Subscribed to topic: {topic}")
 
     async def unsubscribe(self, topic: str) -> None:
@@ -146,7 +155,7 @@ class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
         ephemeral_response_topic = self._get_ephemeral_response_topic(message.topic)
 
         # we must build a new client .. otherwise the background listener will receive the response
-        config = self.build_client_config(client_id=f"{self.mqtt_config.client_id}-response-{uuid.uuid4()}")
+        config = self.build_client_config(client_id=f"{self.config.client_id}-response-{uuid.uuid4()}")
         async with aiomqtt.Client(**config) as client:
             await client.subscribe(ephemeral_response_topic)
 
@@ -167,18 +176,19 @@ class MqttSocketProvider(SocketProvider):
     """
     Defines an interface for a socket provider. A socket provider is a function which creates a socket and returns it.
     """
+
     def __init__(
-            self, 
-            config: MqttConfig,
-            message_decoder: MessageDecoder = _mqtt_message_decoder,
-            message_encoder: MessageEncoder = _mqtt_message_encoder,
+        self,
+        config: MqttConfig,
+        message_decoder: MessageDecoder = _mqtt_message_decoder,
+        message_encoder: MessageEncoder = _mqtt_message_encoder,
     ) -> None:
         self.config = config
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
 
     def create_socket(
-            self, 
-            queue: asyncio.Queue,
+        self,
+        queue: asyncio.Queue | None,
     ) -> None:
         return MqttSocket(self.config, queue, self.message_decoder, self.message_encoder)
