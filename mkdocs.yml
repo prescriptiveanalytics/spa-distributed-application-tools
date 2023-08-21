@@ -2,10 +2,18 @@ site_name: Distributed Application Tools - Prescriptive Analytics
 
 theme:
   name: material
+    
+repo_url: https://github.com/prescriptiveanalytics/spa-distributed-application-tools
 
 markdown_extensions:
   - admonition
   - pymdownx.snippets
+    
+extra:
+  social:
+    - icon: fontawesome/solid/house
+      link: https://www.prescriptiveanalytics.at/
+      name: Project Homepage
 
 plugins:
   - search
