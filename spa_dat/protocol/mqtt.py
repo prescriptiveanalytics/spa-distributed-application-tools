@@ -7,8 +7,9 @@ from typing import Callable
 
 import aiomqtt
 import backoff
+from pydantic.dataclasses import dataclass
 
-from spa_dat.config import MqttConfig
+from spa_dat.provider import SocketProvider
 from spa_dat.protocol.spa import SpaMessage, SpaProtocol
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ MessageDecoder = Callable[[aiomqtt.Message], SpaMessage]
 MessageEncoder = Callable[[SpaMessage], aiomqtt.Message]
 
 
+# region helper functions
 def _mqtt_message_decoder(message: aiomqtt.Message) -> SpaMessage:
     # decodes the mqtt message and builds the SpaMessage from it
     try:
@@ -55,12 +57,29 @@ async def _read_response_message(
             message = message_decoder(message)
             return message
 
+# endregion helper functions
 
-class MqttService(SpaProtocol, AbstractAsyncContextManager):
+@dataclass
+class MqttConfig:
+    host: str
+    port: int
+    default_subscription_topic: str | None = None  # if set to none no subscription will be made
+    keepalive: int = 60
+    qos: int = 0
+    retain = False
+    username = None
+    password = None
+    client_id: str = str(uuid.uuid4())
+
+
+class MqttSocket(SpaProtocol, AbstractAsyncContextManager):
+    """
+    Defines an interface for an mqtt broker. It implements all necessary methods from the SpaProtocol.
+    """
     def __init__(
         self,
         config: MqttConfig,
-        message_queue: asyncio.Queue = asyncio.Queue(),
+        message_queue: asyncio.Queue,
         message_decoder: MessageDecoder = _mqtt_message_decoder,
         message_encoder: MessageEncoder = _mqtt_message_encoder,
     ) -> None:
@@ -142,3 +161,24 @@ class MqttService(SpaProtocol, AbstractAsyncContextManager):
             response = await listener
             await client.unsubscribe(ephemeral_response_topic)
         return response
+
+
+class MqttSocketProvider(SocketProvider):
+    """
+    Defines an interface for a socket provider. A socket provider is a function which creates a socket and returns it.
+    """
+    def __init__(
+            self, 
+            config: MqttConfig,
+            message_decoder: MessageDecoder = _mqtt_message_decoder,
+            message_encoder: MessageEncoder = _mqtt_message_encoder,
+    ) -> None:
+        self.config = config
+        self.message_decoder = message_decoder
+        self.message_encoder = message_encoder
+
+    def create_socket(
+            self, 
+            queue: asyncio.Queue,
+    ) -> None:
+        return MqttSocket(self.config, queue, self.message_decoder, self.message_encoder)

@@ -5,8 +5,8 @@ from typing import Callable, Protocol
 
 from pydantic.dataclasses import dataclass
 
-from spa_dat.config import MqttConfig
-from spa_dat.protocol.mqtt import MqttService
+from spa_dat.protocol.mqtt import MqttConfig
+from spa_dat.protocol.mqtt import MqttSocket
 from spa_dat.protocol.spa import SpaMessage, SpaProtocol
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DistributedApplicationContext:
-    message_service: MqttService
+    message_service: SpaProtocol
 
 
 ProducerCallback = Callable[[DistributedApplicationContext], None]
@@ -49,25 +49,29 @@ class ProducerApplication(ApplicationLifeCycle):
 
     Attributes:
         async_callback: A callback which is called upon receiving a message.
-        config: The configuration for the message bus. Can be any of the supported config types.
-        ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited.
-        This adds support for async ressources.
+        config: The configuration for the message bus. Can be any of the supported config types. 
+        async_ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited during the livecycle
         _queue_in (asyncio.Queue): A queue for receiving messages from the message bus.
     """
 
-    def __init__(self, async_callback: ProducerCallback, config: MqttConfig) -> None:
+    def __init__(
+            self, 
+            async_callback: ProducerCallback, 
+            config: MqttConfig,
+            async_ressources: list[AbstractAsyncContextManager] = []
+        ) -> None:
         self.config = config
         self.exit_stack = AsyncExitStack()
         self.callback = async_callback
 
-        self.ressources: list[AbstractAsyncContextManager] = []
+        self.async_ressources: list[AbstractAsyncContextManager] = async_ressources
 
     def setup(self):
         """
         Method for initializing non async components/ressources of the application.
         """
         logger.info("[Startup] Application")
-        self.message_service = MqttService(self.config, None)
+        self.message_service = MqttSocket(self.config, None)
 
     def run(self):
         asyncio.run(self.run_async())
@@ -84,7 +88,7 @@ class ProducerApplication(ApplicationLifeCycle):
             await self.exit_stack.enter_async_context(self.message_service)
 
             # enter dynamic context
-            for ressource in self.ressources:
+            for ressource in self.async_ressources:
                 await self.exit_stack.enter_async_context(ressource)
 
             # shut down after leaving context
@@ -107,8 +111,7 @@ class DistributedApplication(ApplicationLifeCycle):
     Attributes:
         async_callback: A callback which is called upon receiving a message.
         config: The configuration for the message bus. Can be any of the supported config types.
-        ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited.
-        This adds support for async ressources.
+        async_ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited.
         _queue_in (asyncio.Queue): A queue for receiving messages from the message bus.
     """
 
@@ -132,7 +135,7 @@ class DistributedApplication(ApplicationLifeCycle):
         Method for initializing non async components/ressources of the application.
         """
         logger.info("[Startup] Application")
-        self.message_service = MqttService(self.config, self._queue_in)
+        self.message_service = MqttSocket(self.config, self._queue_in)
 
     def run(self):
         """

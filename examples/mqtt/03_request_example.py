@@ -8,7 +8,7 @@ from spa_dat.application import (
     DistributedApplicationContext,
     ProducerApplication,
 )
-from spa_dat.config import MqttConfig
+from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.spa import SpaMessage
 
 logger = logging.getLogger(__name__)
