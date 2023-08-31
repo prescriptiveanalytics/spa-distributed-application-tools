@@ -14,7 +14,7 @@ from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
 logger = logging.getLogger(__name__)
 
 MessageDecoder = Callable[[aiomqtt.Message], SpaMessage]
-MessageEncoder = Callable[[SpaMessage], aiomqtt.Message]
+MessageEncoder = Callable[[SpaMessage], bytes]
 
 
 # region helper functions
@@ -27,7 +27,7 @@ def _mqtt_message_decoder(message: aiomqtt.Message) -> SpaMessage:
         logger.error(f"Could not parse SPA message: {message.payload.decode()}. Error during `json.loads`: {e}")
 
 
-def _mqtt_message_encoder(message: SpaMessage) -> aiomqtt.Message:
+def _mqtt_message_encoder(message: SpaMessage) -> bytes:
     """
     Encodes the SpaMessage into a mqtt message.
     """
@@ -44,9 +44,7 @@ async def _read_messages(client: aiomqtt.Client, message_queue: asyncio.Queue, m
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _read_response_message(
-    client: aiomqtt.Client, ephemeral_response_topic: str, message_decoder: MessageDecoder
-) -> SpaMessage | None:
+async def _read_response_message(client: aiomqtt.Client, message_decoder: MessageDecoder) -> SpaMessage | None:
     """
     Read a response message from the given topic. Returns None if no message was received / could not be parsed.
     Creates a new connection to avoid mixing messages with the default connection.
@@ -160,7 +158,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
             await client.subscribe(ephemeral_response_topic)
 
             # start listener for response
-            listener = _read_response_message(client, ephemeral_response_topic, self.message_decoder)
+            listener = _read_response_message(client, self.message_decoder)
 
             # publish message and wait for response, set response topic
             message.response_topic = ephemeral_response_topic

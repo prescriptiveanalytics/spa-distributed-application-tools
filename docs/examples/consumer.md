@@ -5,5 +5,5 @@ A consumer is triggered by a message and can then do arbitary work. It can also 
 The following shows a minimal example of such a consumer.
 
 ```
---8<-- "examples/01_simple_consumer.py"
+--8<-- "examples/mqtt/01_simple_consumer.py"
 ```

@@ -3,27 +3,28 @@ import json
 import logging
 import uuid
 from contextlib import AbstractAsyncContextManager
+from dataclasses import dataclass
 from typing import Callable
 
-from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from aiokafka.helpers import create_ssl_context
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, ConsumerRecord
+from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
 from spa_dat.protocol.typedef import SpaMessage, SpaSocket
-from spa_dat.provider import KafkaConfig
 
 logger = logging.getLogger(__name__)
 
-MessageDecoder = Callable[[bytes], SpaMessage]
+MessageDecoder = Callable[[ConsumerRecord], SpaMessage]
 MessageEncoder = Callable[[SpaMessage], bytes]
 
 
-def _kafka_message_decoder(message: bytes) -> SpaMessage:
+def _kafka_message_decoder(message: ConsumerRecord) -> SpaMessage:
     # decodes the kafka message and builds the SpaMessage from it
     try:
-        message = SpaMessage(**json.loads(message.decode()))
+        message = SpaMessage(**json.loads(message.value))
         return message
     except json.JSONDecodeError as e:
-        logger.error(f"Could not parse SPA message: {message.decode()}. Error during `json.loads`: {e}")
+        logger.error(f"Could not parse SPA message: {message.value}. Error during `json.loads`: {e}")
+        return None
 
 
 def _kafka_message_encoder(message: SpaMessage) -> bytes:
@@ -33,7 +34,32 @@ def _kafka_message_encoder(message: SpaMessage) -> bytes:
     return message.model_dump_json().encode("utf-8")
 
 
-class KafkaService(SpaSocket, AbstractAsyncContextManager):
+async def _read_response_message(consumer: AIOKafkaConsumer, message_decoder: MessageDecoder) -> SpaMessage | None:
+    """
+    Read a response message from the given topic. Returns None if no message was received / could not be parsed.
+    """
+    message = await consumer.getone()
+    return message_decoder(message)
+
+
+async def _read_messages(
+    consumer: AIOKafkaConsumer, message_queue: asyncio.Queue, message_decoder: MessageDecoder
+) -> None:
+    async for message in consumer:
+        message = message_decoder(message)
+        if message is not None:
+            await message_queue.put(message)
+
+
+@dataclass
+class KafkaConfig:
+    bootstrap_servers: str
+    default_subscription_topics: str | None | list[str] = None  # if set to none no subscription will be made
+    group_id: str | None = None
+    client_id: str = str(uuid.uuid4())
+
+
+class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
     def __init__(
         self,
         config: KafkaConfig,
@@ -41,61 +67,65 @@ class KafkaService(SpaSocket, AbstractAsyncContextManager):
         message_decoder: MessageDecoder = _kafka_message_decoder,
         message_encoder: MessageEncoder = _kafka_message_encoder,
     ) -> None:
-        self.kafka_config = config
+        self.config = config
         self.message_queue = message_queue
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
-        self._consumer_config = self.build_consumer_config()
-        self._producer_config = self.build_producer_config()
-        self.consumer = AIOKafkaConsumer(**self._consumer_config)
-        self.producer = AIOKafkaProducer(**self._producer_config)
+
+        self.consumer = AIOKafkaConsumer(**KafkaSocket._build_consumer_config(config))
+        self.admin_client = AIOKafkaAdminClient(**KafkaSocket._build_producer_config(config))
+        self.producer = AIOKafkaProducer(**KafkaSocket._build_producer_config(config))
+
         self.reader_task = None
 
-    def build_consumer_config(self) -> dict:
-        """
-        Build a consumer config for the Kafka consumer.
-        """
-        ssl_context = create_ssl_context(
-            cafile=self.kafka_config.ca_file,
-            certfile=self.kafka_config.cert_file,
-            keyfile=self.kafka_config.key_file,
-            password=self.kafka_config.key_password,
-        )
+        # these are created by the client and deleted again
+        self.managed_topics = set()
+        if config.default_subscription_topics is not None:
+            if isinstance(config.default_subscription_topics, str):
+                self.managed_topics.update([config.default_subscription_topics])
+            else:
+                # we expect it to be a list or list like structure
+                self.managed_topics.update(config.default_subscription_topics)
 
-        return dict(
-            bootstrap_servers=self.kafka_config.bootstrap_servers,
-            group_id=self.kafka_config.group_id,
-            security_protocol=self.kafka_config.security_protocol,
-            ssl_context=ssl_context,
-        )
+        # add topic for response messages
+        self.managed_topics.add(self._get_ephemeral_response_topic())
 
-    def build_producer_config(self) -> dict:
-        """
-        Build a producer config for the Kafka producer.
-        """
-        ssl_context = create_ssl_context(
-            cafile=self.kafka_config.ca_file,
-            certfile=self.kafka_config.cert_file,
-            keyfile=self.kafka_config.key_file,
-            password=self.kafka_config.key_password,
-        )
 
-        return dict(
-            bootstrap_servers=self.kafka_config.bootstrap_servers,
-            security_protocol=self.kafka_config.security_protocol,
-            ssl_context=ssl_context,
-        )
+    @staticmethod
+    def _build_consumer_config(config: KafkaConfig) -> dict:
+        return {
+            "bootstrap_servers": config.bootstrap_servers,
+            "group_id": config.group_id,
+            "client_id": config.client_id,
+        }
+
+    @staticmethod
+    def _build_producer_config(config) -> dict:
+        return {
+            "bootstrap_servers": config.bootstrap_servers,
+            "client_id": config.client_id,
+        }
 
     async def __aenter__(self):
         """Return `self` upon entering the runtime context."""
+        await self.admin_client.start()
         await self.consumer.start()
         await self.producer.start()
 
         # spawn tasks which reads messages
-        self.reader_task = asyncio.create_task(
-            self._read_messages(),
-            name="task-kafka-reader",
-        )
+        if self.reader_task is None:
+            self.reader_task = asyncio.create_task(
+                _read_messages(self.consumer, self.message_queue, self.message_decoder),
+                name="task-kafka-reader",
+            )
+
+        # subscribe to default topic
+        if self.managed_topics is not None:
+            await self.admin_client.create_topics(
+                [NewTopic(name=name, num_partitions=1, replication_factor=1) for name in self.managed_topics],
+            )
+        if self.config.default_subscription_topics is not None:
+            await self.subscribe(self.config.default_subscription_topics)
 
         return self
 
@@ -105,8 +135,12 @@ class KafkaService(SpaSocket, AbstractAsyncContextManager):
             self.reader_task.cancel()
             self.reader_task = None
 
+        if self.managed_topics is not None:
+            await self.admin_client.delete_topics(list(self.managed_topics))
+
         await self.consumer.stop()
         await self.producer.stop()
+        await self.admin_client.close()
         return None
 
     async def publish(self, message: SpaMessage) -> None:
@@ -116,36 +150,25 @@ class KafkaService(SpaSocket, AbstractAsyncContextManager):
         )
 
     async def subscribe(self, topic: str) -> None:
-        await self.consumer.subscribe([topic])
+        self.consumer.subscribe([topic])
         logger.info(f"Subscribed to topic: {topic}")
 
     async def unsubscribe(self, topic: str) -> None:
-        await self.consumer.unsubscribe([topic])
+        self.consumer.unsubscribe([topic])
         logger.info(f"Unsubscribed from topic: {topic}")
 
-    def _get_ephemeral_response_topic(self, topic: str) -> str:
-        return f"{topic}/request/{uuid.uuid4()}"
+    def _get_ephemeral_response_topic(self) -> str:
+        return f"{self.config.client_id}_request_response"
 
     async def request(self, message: SpaMessage) -> SpaMessage | None:
         """
         Publish a message and wait for a response. Returns none if no response was received / could not be parsed.
         """
-        ephemeral_response_topic = self._get_ephemeral_response_topic(message.topic)
+        ephemeral_response_topic = self._get_ephemeral_response_topic()
 
-        async with AIOKafkaConsumer(
-            bootstrap_servers=self.kafka_config.bootstrap_servers,
-            security_protocol=self.kafka_config.security_protocol,
-            ssl_context=create_ssl_context(
-                cafile=self.kafka_config.ca_file,
-                certfile=self.kafka_config.cert_file,
-                keyfile=self.kafka_config.key_file,
-                password=self.kafka_config.key_password,
-            ),
-        ) as consumer:
-            await consumer.subscribe([ephemeral_response_topic])
-
+        async with AIOKafkaConsumer(ephemeral_response_topic, **KafkaSocket._build_consumer_config(self.config)) as consumer:
             # start listener for response
-            listener = self._read_response_message(consumer)
+            listener = _read_response_message(consumer, self.message_decoder)
 
             # publish message and wait for response, set response topic
             message.response_topic = ephemeral_response_topic
@@ -153,19 +176,19 @@ class KafkaService(SpaSocket, AbstractAsyncContextManager):
 
             # wait for response
             response = await listener
-            await consumer.unsubscribe([ephemeral_response_topic])
         return response
 
-    async def _read_response_message(self, consumer: AIOKafkaConsumer) -> SpaMessage | None:
-        """
-        Read a response message from the given topic. Returns None if no message was received / could not be parsed.
-        """
-        async for message in consumer:
-            message = self.message_decoder(message.value)
-            return message
 
-    async def _read_messages(self):
-        async for message in self.consumer:
-            message = self.message_decoder(message.value)
-            if message is not None:
-                await self.message_queue.put(message)
+class KafkaSocketProvider:
+    def __init__(
+        self,
+        config: KafkaConfig,
+        message_decoder: MessageDecoder = _kafka_message_decoder,
+        message_encoder: MessageEncoder = _kafka_message_encoder,
+    ) -> None:
+        self.config = config
+        self.message_decoder = message_decoder
+        self.message_encoder = message_encoder
+
+    def create_socket(self, queue: asyncio.Queue | None) -> KafkaSocket:
+        return KafkaSocket(self.config, queue, self.message_decoder, self.message_encoder)

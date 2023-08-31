@@ -1,11 +1,10 @@
 import asyncio
-from dataclasses import dataclass
 import logging
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
+from dataclasses import dataclass
 from typing import Callable, Protocol
 
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
-from spa_dat.protocol.typedef import SocketProvider
+from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 

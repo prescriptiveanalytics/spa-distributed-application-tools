@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from spa_dat.config import Configuration
+from spa_dat.protocol.kafka import KafkaConfig, KafkaSocketProvider
 from spa_dat.protocol.mqtt import MqttConfig, MqttSocketProvider
 from spa_dat.protocol.typedef import SocketProvider
 
@@ -16,6 +17,8 @@ class SocketProviderFactory(Protocol):
         match config:
             case MqttConfig():
                 return MqttSocketProvider(config)
+            case KafkaConfig():
+                return KafkaSocketProvider(config)
             case _:
                 raise NotImplementedError(f"Config type {type(config)} not supported")
 
