@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  # MQTT broker
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"      # MQTT port
+      - "9001:9001"      # WebSockets (if you want to enable it, you'll need to adjust the config)
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+# use tools like https://github.com/EdJoPaTo/mqttui or mqtt-explorer to connect to the broker

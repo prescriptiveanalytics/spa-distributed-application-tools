@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 async def producer_callback(context: DistributedApplicationContext):
     for i in range(10):
-        logger.debug("Sending Request")
+        logger.info("Sending Request")
         response = await context.message_service.request(
             SpaMessage(
                 client_id="spa-dat-producer",
@@ -29,11 +29,11 @@ async def producer_callback(context: DistributedApplicationContext):
                 timestamp=int(time.time()),
             )
         )
-        logging.debug(f"Received Response: {response.payload}")
+        logging.info(f"Received Response: {response.payload}")
 
 
 async def consumer_callback(message: SpaMessage, context: DistributedApplicationContext):
-    logger.debug(f"Received Request: {message.payload}")
+    logger.info(f"Received Request: {message.payload}")
 
     # simulate long running request
     await asyncio.sleep(1)
@@ -53,9 +53,9 @@ def run_consumer():
         consumer_callback,
         SocketProviderFactory.from_config(
             MqttConfig(
-                host="mqtt-dashboard.com",
+                host="localhost",
                 port=1883,
-                default_subscription_topic="test/spa-dat",
+                default_subscription_topic="test/spa-dat-producer",
             )
         ),
     )
@@ -67,7 +67,7 @@ def run_producer():
         producer_callback,
         SocketProviderFactory.from_config(
             MqttConfig(
-                host="mqtt-dashboard.com",
+                host="localhost",
                 port=1883,
             )
         ),
@@ -79,7 +79,7 @@ def main():
     """
     Run this example twice in two different terminals. One as consumer and one as producer.
     """
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     if sys.argv[1] == "consumer":
         run_consumer()
     if sys.argv[1] == "producer":

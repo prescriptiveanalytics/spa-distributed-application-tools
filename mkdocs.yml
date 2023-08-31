@@ -8,6 +8,9 @@ repo_url: https://github.com/prescriptiveanalytics/spa-distributed-application-t
 markdown_extensions:
   - admonition
   - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
     
 extra:
   social:
