@@ -31,9 +31,4 @@ async def producer_callback(context: DistributedApplicationContext):
         )
 
 
-def main():
-    app.run()
-
-
-if __name__ == "__main__":
-    main()
+app.run()

@@ -17,9 +17,4 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
     logging.info(f"Received message: {message}")
 
 
-def main():
-    app.run()
-
-
-if __name__ == "__main__":
-    main()
+app.run()
