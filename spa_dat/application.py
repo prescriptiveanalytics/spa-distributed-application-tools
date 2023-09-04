@@ -39,6 +39,55 @@ class ApplicationLifeCycle(Protocol):
         logger.info("[Shutdown] Application")
 
 
+class FastDistributedApplication(ApplicationLifeCycle):
+    def __init__(self, socket_provider: SocketProvider) -> None:
+        self.applications = []
+        self.default_socket_provider = socket_provider
+
+    def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider):
+        self.applications.append(
+            DistributedApplication(
+                async_callback=async_consumer_callback,
+                socket_provider=socket_provider,
+            )
+        )
+
+    def add_producer_application(self, async_producer_callback: ProducerCallback, socket_provider: SocketProvider):
+        self.applications.append(
+            ProducerApplication(
+                async_callback=async_producer_callback,
+                socket_provider=socket_provider,
+            )
+        )
+
+    def application(self, socket_provider: SocketProvider | None = None):
+        socket_provider = socket_provider or self.default_socket_provider
+        if socket_provider is None:
+            raise ValueError("No socket provider found. Either set the default in the constructor or here!")
+
+        def inner(callback: ConsumerCallback):
+            self.add_application(callback, socket_provider)
+
+        return inner
+
+    def producer(self, socket_provider: SocketProvider | None = None):
+        socket_provider = socket_provider or self.default_socket_provider
+        if socket_provider is None:
+            raise ValueError("No socket provider found. Either set the default in the constructor or here!")
+
+        def inner(callback: ProducerCallback):
+            self.add_producer_application(callback, socket_provider)
+
+        
+        return inner
+
+    def run(self):
+        asyncio.run(self.run_async())
+
+    async def run_async(self):
+        await asyncio.gather(*[app.run_async() for app in self.applications])
+
+
 class ProducerApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
