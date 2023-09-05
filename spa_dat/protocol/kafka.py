@@ -90,7 +90,6 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         # add topic for response messages
         self.managed_topics.add(self._get_ephemeral_response_topic())
 
-
     @staticmethod
     def _build_consumer_config(config: KafkaConfig) -> dict:
         return {
@@ -166,7 +165,9 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         """
         ephemeral_response_topic = self._get_ephemeral_response_topic()
 
-        async with AIOKafkaConsumer(ephemeral_response_topic, **KafkaSocket._build_consumer_config(self.config)) as consumer:
+        async with AIOKafkaConsumer(
+            ephemeral_response_topic, **KafkaSocket._build_consumer_config(self.config)
+        ) as consumer:
             # start listener for response
             listener = _read_response_message(consumer, self.message_decoder)
 

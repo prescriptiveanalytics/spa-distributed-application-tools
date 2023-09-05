@@ -78,7 +78,6 @@ class FastDistributedApplication(ApplicationLifeCycle):
         def inner(callback: ProducerCallback):
             self.add_producer_application(callback, socket_provider)
 
-        
         return inner
 
     def run(self):
