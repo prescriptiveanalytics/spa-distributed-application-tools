@@ -78,6 +78,8 @@ def main():
     Run this example twice in two different terminals. One as consumer and one as producer.
     """
     logging.basicConfig(level=logging.INFO)
+    if len(sys.argv) != 2:
+        logger.error("Please specify either 'consumer' or 'producer' as argument")
     if sys.argv[1] == "consumer":
         run_consumer()
     if sys.argv[1] == "producer":
