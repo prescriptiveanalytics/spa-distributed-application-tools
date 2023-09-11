@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 _SupportedContextManagers = Union[AbstractAsyncContextManager, AbstractContextManager]
 
+
 class ProducerCallback(Protocol):
     async def __call__(self, socket: SpaSocket, **kwargs) -> None:
         raise NotImplementedError()
@@ -30,9 +31,21 @@ class ApplicationLifeCycle(Protocol):
         """
         raise NotImplementedError()
 
-    def run(self):
+    def start(self):
         """
         Execute your application - should block at this point
+        """
+        raise NotImplementedError()
+
+    async def start_async(self):
+        """
+        Asyncronous method which starts the application itself, not blocking
+        """
+        raise NotImplementedError()
+
+    async def run_async(self):
+        """
+        Asyncronous method which contains the logic of the application. (e.g. endless loop, etc.)
         """
         raise NotImplementedError()
 
@@ -43,7 +56,7 @@ class ApplicationLifeCycle(Protocol):
         raise NotImplementedError()
 
 
-class ProducerApplication(ApplicationLifeCycle):
+class AbstractApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It connects to a given message bus and provides a services for handling messages.
@@ -72,16 +85,23 @@ class ProducerApplication(ApplicationLifeCycle):
         """
         Method for initializing non async components/ressources of the application.
         """
-        logger.info(f"Starting Producer '{self.callback.__name__}'")
+        logger.info(f"Starting '{self.callback.__name__}'")
         self.socket = self.socket_provider.create_socket(None)
 
-
-    def run(self):
-        asyncio.run(self.run_async())
-
-    async def run_async(self):
+    def teardown(self):
         """
-        Start the Application and initialize the default asyncio loop.
+        Method for cleanup non async components/ressources of the application.
+        """
+        logger.info(f"Halting '{self.callback.__name__}'")
+
+    def start(self):
+        """
+        Start the asyncronous application. This method blocks until the application is stopped.
+        """
+        asyncio.run(self.start_async())
+
+    async def start_async(self):
+        """
         Initialize the application and its ressources.
         """
         self.setup()
@@ -99,90 +119,45 @@ class ProducerApplication(ApplicationLifeCycle):
             # shut down after leaving context
             self.exit_stack.callback(self.teardown)
 
-            await self.callback(socket=self.socket, **self.ressources)
-
-    def teardown(self):
-        """
-        Method for cleanup non async components/ressources of the application.
-        """
-        logger.info(f"Shutdown Producer '{self.callback.__name__}'")
-
-
-class ConsumerApplication(ApplicationLifeCycle):
-    """
-    This provides a simple class for implementing a distributed application.
-    It provides a service for handling messages.
-    It calls a callback directly, which can produce and read messages.
-    This service runs in an endless loop until stopped by the user.
-
-    Attributes:
-        async_callback: A callback which is called upon receiving a message.
-        config: The configuration for the message bus. Can be any of the supported config types.
-        ressources (list[AbstractAsyncContextManager]): A list of context managers which are entered and exited.
-        _queue_in (asyncio.Queue): A queue for receiving messages from the message bus.
-    """
-
-    def __init__(
-        self,
-        async_callback,
-        socket_provider: SocketProvider,
-        ressources: dict[str, _SupportedContextManagers] = {},
-    ) -> None:
-        super().__init__()
-        self.callback = async_callback
-        self._queue_in = asyncio.Queue()
-        self.exit_stack = AsyncExitStack()
-        self.socket_provider = socket_provider
-
-        # Any async context manager can be added here, these will be entered and exited
-        # during the main loop
-        self.ressources: dict[str, _SupportedContextManagers] = ressources
-
-    def setup(self):
-        """
-        Method for initializing non async components/ressources of the application.
-        When this method is executed, the asyncio loop is already yet running.
-        """
-        logger.info(f"Starting Application '{self.callback.__name__}'")
-        self.socket = self.socket_provider.create_socket(self._queue_in)
-
-    def run(self):
-        """
-        Start the Application and initialize the default asyncio loop
-        """
-        asyncio.run(self.run_async())
+            # run the logic for this application
+            await self.run_async()
 
     async def run_async(self):
         """
-        Start the Application and initialize the default asyncio loop.
-        Initialize the application and its ressources.
+        Contains the logic how the applicaiton behaves (e.g. endless loop, etc.)
         """
+        raise NotImplementedError()
 
-        self.setup()
-        async with self.exit_stack:
-            # enter fixed context
-            await self.exit_stack.enter_async_context(self.socket)
 
-            # enter dynamic context
-            for ressource in self.ressources:
-                await self.exit_stack.enter_async_context(ressource)
-
-            # shut down after leaving context
-            self.exit_stack.callback(self.teardown)
-
-            # read and handle messages
-            while True:
-                message = await self._queue_in.get()
-                await self.callback(message=message, socket=self.socket, **self.ressources)
-
-    def teardown(self):
+class ProducerApplication(AbstractApplication):
+    async def run_async(self):
         """
-        Method for cleanup non async components/ressources of the application.
+        Starts the callback once and after it ends the producer is done.
         """
-        logger.info(f"Stopping Application '{self.callback.__name__}'")
+        await self.callback(socket=self.socket, **self.ressources)
+
+
+class ConsumerApplication(AbstractApplication):
+    def setup(self):
+        super().setup()
+        self._queue_in = asyncio.Queue()
+        self.socket = self.socket_provider.create_socket(self._queue_in)
+
+    async def run_async(self):
+        """
+        Repeats the callback on each received message
+        """
+        while True:
+            message = await self._queue_in.get()
+            await self.callback(message=message, socket=self.socket, **self.ressources)
 
 
 class DistributedApplication(ApplicationLifeCycle):
+    """
+    This class provides a simple interface for creating distributed applications. It allows to create multiple
+    applications which are connected to the same message bus. It does this by providing decorators for creating
+    applications and producers.
+    """
     def __init__(self, default_socket_provider: SocketProvider) -> None:
         self.applications = []
         self.default_socket_provider = default_socket_provider
@@ -225,8 +200,8 @@ class DistributedApplication(ApplicationLifeCycle):
 
         return inner
 
-    def run(self):
-        asyncio.run(self.run_async())
+    def start(self):
+        asyncio.run(self.start_async())
 
-    async def run_async(self):
-        await asyncio.gather(*[app.run_async() for app in self.applications])
+    async def start_async(self):
+        await asyncio.gather(*[app.start_async() for app in self.applications])

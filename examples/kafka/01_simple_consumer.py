@@ -24,7 +24,7 @@ def main():
             )
         ),
     )
-    app.run()
+    app.start()
 
 
 if __name__ == "__main__":

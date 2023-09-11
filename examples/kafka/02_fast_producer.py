@@ -26,4 +26,4 @@ async def producer_callback(context: DistributedApplicationContext):
         )
 
 
-app.run()
+app.start()

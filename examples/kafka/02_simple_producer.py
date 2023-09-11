@@ -1,7 +1,7 @@
 import logging
 import time
 
-from spa_dat.application import DistributedApplicationContext, ProducerApplication
+from spa_dat.application import AbstractApplication, DistributedApplicationContext
 from spa_dat.protocol.kafka import KafkaConfig
 from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
@@ -27,7 +27,7 @@ async def producer_callback(context: DistributedApplicationContext):
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    app = ProducerApplication(
+    app = AbstractApplication(
         producer_callback,
         SocketProviderFactory.from_config(
             KafkaConfig(
@@ -36,7 +36,7 @@ def main():
             )
         ),
     )
-    app.run()
+    app.start()
 
 
 if __name__ == "__main__":

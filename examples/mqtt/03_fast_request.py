@@ -42,4 +42,4 @@ async def consumer_callback(message: SpaMessage, socket: SpaSocket):
     )
 
 
-app.run()
+app.start()

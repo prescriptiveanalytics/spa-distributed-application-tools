@@ -42,4 +42,4 @@ async def producer_callback(context: DistributedApplicationContext):
         logging.info(f"Received Response: {response.payload}")
 
 
-app.run()
+app.start()

@@ -4,9 +4,9 @@ import sys
 import time
 
 from spa_dat.application import (
+    AbstractApplication,
     ConsumerApplication,
     DistributedApplicationContext,
-    ProducerApplication,
 )
 from spa_dat.protocol.kafka import KafkaConfig
 from spa_dat.protocol.typedef import SpaMessage
@@ -57,11 +57,11 @@ def run_consumer():
             )
         ),
     )
-    consumer.run()
+    consumer.start()
 
 
 def run_producer():
-    producer = ProducerApplication(
+    producer = AbstractApplication(
         producer_callback,
         SocketProviderFactory.from_config(
             KafkaConfig(
@@ -69,7 +69,7 @@ def run_producer():
             )
         ),
     )
-    producer.run()
+    producer.start()
 
 
 def main():

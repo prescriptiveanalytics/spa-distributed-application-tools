@@ -17,4 +17,4 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
     logging.info(f"Received message: {message}")
 
 
-app.run()
+app.start()
