@@ -30,12 +30,11 @@ class SpaMessage(BaseModel):
     Defines the message for SPA applications
     """
 
-    client_name: str
-    content_type: str
     payload: bytes
     topic: str
+    content_type: str | None = None
+    client_name: str | None= None
     response_topic: str | None = None
-    quality_of_service: int = 0
     timestamp: int = int(time.time())
 
 

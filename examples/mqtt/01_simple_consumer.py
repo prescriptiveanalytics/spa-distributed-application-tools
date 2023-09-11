@@ -1,6 +1,6 @@
 import logging
 
-from spa_dat.application import DistributedApplication, DistributedApplicationContext
+from spa_dat.application import ConsumerApplication, DistributedApplicationContext
 from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
@@ -14,7 +14,7 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    app = DistributedApplication(
+    app = ConsumerApplication(
         consumer_callback,
         SocketProviderFactory.from_config(
             MqttConfig(

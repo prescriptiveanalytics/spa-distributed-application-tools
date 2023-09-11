@@ -4,7 +4,7 @@ import sys
 import time
 
 from spa_dat.application import (
-    DistributedApplication,
+    ConsumerApplication,
     DistributedApplicationContext,
     ProducerApplication,
 )
@@ -25,7 +25,6 @@ async def producer_callback(context: DistributedApplicationContext):
                 content_type="application/json",
                 payload=f"Producer Message {i}",
                 topic="test/spa-dat-producer",
-                quality_of_service=1,
                 timestamp=int(time.time()),
             )
         )
@@ -49,7 +48,7 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
 
 
 def run_consumer():
-    consumer = DistributedApplication(
+    consumer = ConsumerApplication(
         consumer_callback,
         SocketProviderFactory.from_config(
             MqttConfig(

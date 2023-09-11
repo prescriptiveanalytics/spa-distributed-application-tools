@@ -39,14 +39,14 @@ class ApplicationLifeCycle(Protocol):
         logger.info("[Shutdown] Application")
 
 
-class FastDistributedApplication(ApplicationLifeCycle):
+class DistributedApplication(ApplicationLifeCycle):
     def __init__(self, default_socket_provider: SocketProvider) -> None:
         self.applications = []
         self.default_socket_provider = default_socket_provider
 
     def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider):
         self.applications.append(
-            DistributedApplication(
+            ConsumerApplication(
                 async_callback=async_consumer_callback,
                 socket_provider=socket_provider,
 
@@ -161,7 +161,7 @@ class ProducerApplication(ApplicationLifeCycle):
         logger.info("Shutdown Application")
 
 
-class DistributedApplication(ApplicationLifeCycle):
+class ConsumerApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It provides a service for handling messages.
@@ -221,9 +221,10 @@ class DistributedApplication(ApplicationLifeCycle):
             self.exit_stack.callback(self.teardown)
 
             # read and handle messages
-            while True:
+            stop = None
+            while not stop:
                 message = await self._queue_in.get()
-                await self.callback(message, DistributedApplicationContext(self.socket))
+                stop = await self.callback(message, DistributedApplicationContext(self.socket))
 
     def teardown(self):
         """

@@ -4,7 +4,7 @@ import sys
 import time
 
 from spa_dat.application import (
-    DistributedApplication,
+    ConsumerApplication,
     DistributedApplicationContext,
     ProducerApplication,
 )
@@ -49,7 +49,7 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
 
 
 def run_consumer():
-    consumer = DistributedApplication(
+    consumer = ConsumerApplication(
         consumer_callback,
         SocketProviderFactory.from_config(
             KafkaConfig(

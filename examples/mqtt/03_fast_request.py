@@ -4,18 +4,18 @@ import time
 
 from spa_dat.application import (
     DistributedApplicationContext,
-    FastDistributedApplication,
+    DistributedApplication,
 )
 from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 socket_provider = SocketProviderFactory.from_config(MqttConfig(host="mqtt-dashboard.com", port=1883))
-app = FastDistributedApplication(default_socket_provider=socket_provider)
+app = DistributedApplication(default_socket_provider=socket_provider)
 
 
 @app.producer()
