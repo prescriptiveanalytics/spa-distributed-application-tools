@@ -41,7 +41,6 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
     await context.message_service.publish(
         SpaMessage(
             client_name="spa-dat-responder",
-            content_type="application/json",
             payload=f"Response Message for {message.payload}",
             topic=message.response_topic,
         )

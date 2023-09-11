@@ -221,10 +221,9 @@ class ConsumerApplication(ApplicationLifeCycle):
             self.exit_stack.callback(self.teardown)
 
             # read and handle messages
-            stop = None
-            while not stop:
+            while True:
                 message = await self._queue_in.get()
-                stop = await self.callback(message, DistributedApplicationContext(self.socket))
+                await self.callback(message, DistributedApplicationContext(self.socket))
 
     def teardown(self):
         """

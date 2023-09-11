@@ -137,7 +137,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         return None
 
     async def publish(self, message: SpaMessage) -> None:
-        await self.client.publish(message.topic, payload=self.message_encoder(message), qos=message.quality_of_service)
+        await self.client.publish(message.topic, payload=self.message_encoder(message), qos=self.config.qos)
 
     async def subscribe(self, topic: str) -> None:
         await self.client.subscribe(topic, self.config.qos)

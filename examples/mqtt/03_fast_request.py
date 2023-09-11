@@ -24,13 +24,8 @@ async def producer_callback(context: DistributedApplicationContext):
         logger.info("Sending Request")
         response = await context.message_service.request(
             SpaMessage(
-                client_id="spa-dat-producer",
-                client_name="spa-dat-producer",
-                content_type="application/json",
                 payload=f"Producer Message {i}",
                 topic="test/spa-dat-producer",
-                quality_of_service=1,
-                timestamp=int(time.time()),
             )
         )
         logging.info(f"Received Response: {response.payload}")
@@ -45,8 +40,6 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
 
     await context.message_service.publish(
         SpaMessage(
-            client_name="spa-dat-responder",
-            content_type="application/json",
             payload=f"Response Message for {message.payload}",
             topic=message.response_topic,
         )
