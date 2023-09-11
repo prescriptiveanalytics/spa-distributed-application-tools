@@ -44,6 +44,8 @@ class SocketProvider(Protocol):
     A service provider is a class which creates a socket from a given configuration and returns it.
     It also allows to add a queue for communication
     """
+    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+        raise NotImplementedError()
 
-    def create_socket(self, queue: asyncio.Queue | None) -> SpaSocket:
+    def create_socket(self, queue: asyncio.Queue | None, topics: list[str] = None) -> SpaSocket:
         raise NotImplementedError()

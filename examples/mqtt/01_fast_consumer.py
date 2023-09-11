@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 socket_provider = SocketProviderFactory.from_config(
-    MqttConfig(host="mqtt-dashboard.com", port=1883, default_subscription_topic="test/spa-dat")
+    MqttConfig(host="mqtt-dashboard.com", port=1883, default_subscription_topics="test/spa-dat")
 )
 app = FastDistributedApplication(socket_provider)
 

@@ -20,7 +20,7 @@ def main():
             MqttConfig(
                 host="mqtt-dashboard.com",
                 port=1883,
-                default_subscription_topic="test/spa-dat",
+                default_subscription_topics="test/spa-dat",
             )
         ),
     )

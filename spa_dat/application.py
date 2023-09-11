@@ -40,15 +40,16 @@ class ApplicationLifeCycle(Protocol):
 
 
 class FastDistributedApplication(ApplicationLifeCycle):
-    def __init__(self, socket_provider: SocketProvider) -> None:
+    def __init__(self, default_socket_provider: SocketProvider) -> None:
         self.applications = []
-        self.default_socket_provider = socket_provider
+        self.default_socket_provider = default_socket_provider
 
     def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider):
         self.applications.append(
             DistributedApplication(
                 async_callback=async_consumer_callback,
                 socket_provider=socket_provider,
+
             )
         )
 
@@ -60,17 +61,28 @@ class FastDistributedApplication(ApplicationLifeCycle):
             )
         )
 
-    def application(self, socket_provider: SocketProvider | None = None):
+    def application(
+            self, 
+            topics: list[str] | str,
+            *,
+            socket_provider: SocketProvider | None = None
+    ):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
+        
+        socket_provider.overwrite_config(topics=topics)
 
         def inner(callback: ConsumerCallback):
             self.add_application(callback, socket_provider)
 
         return inner
 
-    def producer(self, socket_provider: SocketProvider | None = None):
+    def producer(
+            self, 
+            *,
+            socket_provider: SocketProvider | None = None
+    ):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
