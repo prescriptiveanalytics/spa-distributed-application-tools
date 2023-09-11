@@ -5,62 +5,23 @@ from contextlib import (
     AbstractContextManager,
     AsyncExitStack,
 )
-from typing import Protocol, Union
+from typing import Union
+from spa_dat.application.typedef import ApplicationLifeCycle, ConsumerCallback, ProducerCallback
 
-from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
+from spa_dat.protocol.typedef import SocketProvider
 
 logger = logging.getLogger(__name__)
 
 _SupportedContextManagers = Union[AbstractAsyncContextManager, AbstractContextManager]
 
 
-class ProducerCallback(Protocol):
-    async def __call__(self, socket: SpaSocket, **kwargs) -> None:
-        raise NotImplementedError()
-
-
-class ConsumerCallback(Protocol):
-    async def __call__(self, message: SpaMessage, socket: SpaSocket, **kwargs) -> None:
-        raise NotImplementedError()
-
-
-class ApplicationLifeCycle(Protocol):
-    def setup(self):
-        """
-        Perform initialization tasks, such as setting up resources and dependencies
-        """
-        raise NotImplementedError()
-
-    def start(self):
-        """
-        Execute your application - should block at this point
-        """
-        raise NotImplementedError()
-
-    async def start_async(self):
-        """
-        Asyncronous method which starts the application itself, not blocking
-        """
-        raise NotImplementedError()
-
-    async def run_async(self):
-        """
-        Asyncronous method which contains the logic of the application. (e.g. endless loop, etc.)
-        """
-        raise NotImplementedError()
-
-    def teardown(self):
-        """
-        Handle cleanup
-        """
-        raise NotImplementedError()
-
-
 class AbstractApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It connects to a given message bus and provides a services for handling messages.
-    It acts only as a producer by default
+    
+    It provides a simple way to initialize ressources and handle sockets. It does not provide a concret implementation
+    for how the service behaves. This is left up to subclasses (see `run_async` method).
 
     Attributes:
         async_callback: A callback which is called upon receiving a message.

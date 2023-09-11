@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from spa_dat.application import DistributedApplication
+from spa_dat.application.application import DistributedApplication
 from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.typedef import SpaMessage, SpaSocket
 from spa_dat.provider import SocketProviderFactory
@@ -15,7 +15,7 @@ app = DistributedApplication(default_socket_provider=socket_provider)
 
 
 @app.producer()
-async def producer_callback(socket: SpaSocket):
+async def producer(socket: SpaSocket):
     for i in range(10):
         logger.info("Sending Request")
         response = await socket.request(
@@ -28,7 +28,7 @@ async def producer_callback(socket: SpaSocket):
 
 
 @app.application("test/spa-dat-producer")
-async def consumer_callback(message: SpaMessage, socket: SpaSocket):
+async def consumer(message: SpaMessage, socket: SpaSocket):
     logger.info(f"Received Request: {message.payload}")
 
     # simulate long running request
