@@ -2,7 +2,7 @@ import logging
 
 from spa_dat.application.application import DistributedApplication
 from spa_dat.protocol.mqtt import MqttConfig
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
+from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
 
 logging.basicConfig(level=logging.DEBUG)

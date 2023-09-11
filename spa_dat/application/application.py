@@ -1,25 +1,23 @@
 import asyncio
 import logging
-from contextlib import (
-    AbstractAsyncContextManager,
-    AbstractContextManager,
-    AsyncExitStack,
-)
-from typing import Union
-from spa_dat.application.typedef import ApplicationLifeCycle, ConsumerCallback, ProducerCallback
+from contextlib import AbstractAsyncContextManager, AsyncExitStack
 
+from spa_dat.application.typedef import (
+    ApplicationLifeCycle,
+    ConsumerCallback,
+    ProducerCallback,
+    SupportedContextManagers,
+)
 from spa_dat.protocol.typedef import SocketProvider
 
 logger = logging.getLogger(__name__)
-
-_SupportedContextManagers = Union[AbstractAsyncContextManager, AbstractContextManager]
 
 
 class AbstractApplication(ApplicationLifeCycle):
     """
     This provides a simple class for implementing a distributed application.
     It connects to a given message bus and provides a services for handling messages.
-    
+
     It provides a simple way to initialize ressources and handle sockets. It does not provide a concret implementation
     for how the service behaves. This is left up to subclasses (see `run_async` method).
 
@@ -34,13 +32,13 @@ class AbstractApplication(ApplicationLifeCycle):
         self,
         async_callback: ProducerCallback,
         socket_provider: SocketProvider,
-        ressources: dict[str, _SupportedContextManagers] = {},
+        ressources: dict[str, SupportedContextManagers] = {},
     ) -> None:
         self.exit_stack = AsyncExitStack()
         self.callback = async_callback
         self.socket_provider = socket_provider
 
-        self.ressources: dict[str, _SupportedContextManagers] = ressources
+        self.ressources: dict[str, SupportedContextManagers] = ressources
 
     def setup(self):
         """
@@ -59,7 +57,7 @@ class AbstractApplication(ApplicationLifeCycle):
         """
         Start the asyncronous application. This method blocks until the application is stopped.
         """
-        asyncio.run(self.start_async())
+        asyncio.run(self.start_async(), debug=True)
 
     async def start_async(self):
         """
@@ -119,6 +117,7 @@ class DistributedApplication(ApplicationLifeCycle):
     applications which are connected to the same message bus. It does this by providing decorators for creating
     applications and producers.
     """
+
     def __init__(self, default_socket_provider: SocketProvider) -> None:
         self.applications = []
         self.default_socket_provider = default_socket_provider

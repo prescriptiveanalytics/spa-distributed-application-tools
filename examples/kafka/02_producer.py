@@ -1,5 +1,4 @@
 import logging
-import time
 
 from spa_dat.application.application import DistributedApplication
 from spa_dat.protocol.kafka import KafkaConfig

@@ -2,7 +2,7 @@ import logging
 
 from spa_dat.application.application import DistributedApplication
 from spa_dat.protocol.kafka import KafkaConfig
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
+from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
 
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +14,7 @@ app = DistributedApplication(socket_provider)
 
 @app.application("spa-dat2")
 async def consumer(
-    message: SpaMessage, 
+    message: SpaMessage,
     # socket: SpaSocket <- not needed but available if communication is required
 ):
     logging.info(f"Received message: {message}")

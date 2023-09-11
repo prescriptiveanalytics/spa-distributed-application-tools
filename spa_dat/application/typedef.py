@@ -1,7 +1,7 @@
+from contextlib import AbstractAsyncContextManager, AbstractContextManager
+from typing import Protocol, Union
+
 from spa_dat.protocol.typedef import SpaMessage, SpaSocket
-
-
-from typing import Protocol
 
 
 class ProducerCallback(Protocol):
@@ -44,3 +44,6 @@ class ApplicationLifeCycle(Protocol):
         Handle cleanup
         """
         raise NotImplementedError()
+
+
+SupportedContextManagers = Union[AbstractAsyncContextManager, AbstractContextManager]
