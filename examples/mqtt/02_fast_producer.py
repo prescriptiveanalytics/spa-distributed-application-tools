@@ -1,10 +1,7 @@
 import logging
 import time
 
-from spa_dat.application import (
-    DistributedApplicationContext,
-    DistributedApplication,
-)
+from spa_dat.application import DistributedApplication, DistributedApplicationContext
 from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory

@@ -33,7 +33,7 @@ class SpaMessage(BaseModel):
     payload: bytes
     topic: str
     content_type: str | None = None
-    client_name: str | None= None
+    client_name: str | None = None
     response_topic: str | None = None
     timestamp: int = int(time.time())
 
@@ -43,6 +43,7 @@ class SocketProvider(Protocol):
     A service provider is a class which creates a socket from a given configuration and returns it.
     It also allows to add a queue for communication
     """
+
     def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
         raise NotImplementedError()
 

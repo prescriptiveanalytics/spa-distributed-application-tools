@@ -1,11 +1,7 @@
 import asyncio
 import logging
-import time
 
-from spa_dat.application import (
-    DistributedApplicationContext,
-    DistributedApplication,
-)
+from spa_dat.application import DistributedApplication, DistributedApplicationContext
 from spa_dat.protocol.kafka import KafkaConfig
 from spa_dat.protocol.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
@@ -18,7 +14,7 @@ socket_provider = SocketProviderFactory.from_config(KafkaConfig(bootstrap_server
 app = DistributedApplication(default_socket_provider=socket_provider)
 
 
-@app.application('test-spa-dat-producer')
+@app.application("test-spa-dat-producer")
 async def consumer_callback(message: SpaMessage, context: DistributedApplicationContext):
     logger.info(f"Received Request: {message.payload}")
 
@@ -33,7 +29,6 @@ async def consumer_callback(message: SpaMessage, context: DistributedApplication
     )
 
 
-
 @app.producer()
 async def producer_callback(context: DistributedApplicationContext):
     for i in range(10):
@@ -45,7 +40,6 @@ async def producer_callback(context: DistributedApplicationContext):
             )
         )
         logging.info(f"Received Response: {response.payload}")
-
 
 
 app.run()
