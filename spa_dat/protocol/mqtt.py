@@ -64,11 +64,11 @@ class MqttConfig:
     port: int
     username = None
     password = None
-    default_subscription_topic: str | None = None  # if set to none no subscription will be made
     keepalive: int = 60
     qos: int = 0
     retain = False
-    client_id: str = str(uuid.uuid4())
+    default_subscription_topics: list[str] | str | None = None  # if set to none no subscription will be made
+    client_id: str | None = None
 
 
 class MqttSocket(SpaSocket, AbstractAsyncContextManager):
@@ -117,9 +117,13 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
                 name="task-mqtt-reader",
             )
 
-        # subscribe to default topic
-        if self.config.default_subscription_topic is not None:
-            await self.subscribe(self.config.default_subscription_topic)
+        # subscribe to default topic(s)
+        if self.config.default_subscription_topics is not None:
+            if isinstance(self.config.default_subscription_topics, str):
+                await self.subscribe(self.config.default_subscription_topics)
+            if isinstance(self.config.default_subscription_topics, list):
+                for topic in self.config.default_subscription_topics:
+                    await self.subscribe(topic)
 
         return self
 
@@ -133,7 +137,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         return None
 
     async def publish(self, message: SpaMessage) -> None:
-        await self.client.publish(message.topic, payload=self.message_encoder(message), qos=message.quality_of_service)
+        await self.client.publish(message.topic, payload=self.message_encoder(message), qos=self.config.qos)
 
     async def subscribe(self, topic: str) -> None:
         await self.client.subscribe(topic, self.config.qos)
@@ -162,6 +166,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
 
             # publish message and wait for response, set response topic
             message.response_topic = ephemeral_response_topic
+
             await self.publish(message)
 
             # wait for response
@@ -184,6 +189,17 @@ class MqttSocketProvider(SocketProvider):
         self.config = config
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
+
+    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+        """
+        Overwrites the given config from any defaults which were provided earlier. This is useful if you want to
+        construct or change the default config
+        """
+        # normalize and set topics in config
+        topics = topics or self.config.default_subscription_topics
+        if topics is not None and isinstance(topics, str):
+            topics = [topics]
+        self.config.default_subscription_topics = topics
 
     def create_socket(
         self,

@@ -3,10 +3,8 @@ import time
 from typing import Protocol
 
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 
 
-@dataclass
 class SpaSocket(Protocol):
     """
     Defines the interface for SPA applications to communicate with the message bus.
@@ -30,12 +28,11 @@ class SpaMessage(BaseModel):
     Defines the message for SPA applications
     """
 
-    client_name: str
-    content_type: str
     payload: bytes
     topic: str
+    content_type: str | None = None
+    client_name: str | None = None
     response_topic: str | None = None
-    quality_of_service: int = 0
     timestamp: int = int(time.time())
 
 
@@ -45,5 +42,8 @@ class SocketProvider(Protocol):
     It also allows to add a queue for communication
     """
 
-    def create_socket(self, queue: asyncio.Queue | None) -> SpaSocket:
+    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+        raise NotImplementedError()
+
+    def create_socket(self, queue: asyncio.Queue | None, topics: list[str] = None) -> SpaSocket:
         raise NotImplementedError()

@@ -9,7 +9,7 @@ from typing import Callable
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, ConsumerRecord
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
+from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class KafkaConfig:
     bootstrap_servers: str
     default_subscription_topics: str | None | list[str] = None  # if set to none no subscription will be made
     group_id: str | None = None
-    client_id: str = str(uuid.uuid4())
+    client_id: str = None
 
 
 class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
@@ -71,6 +71,7 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         self.message_queue = message_queue
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
+        self.client_id = config.client_id or str(uuid.uuid4())
 
         self.consumer = AIOKafkaConsumer(**KafkaSocket._build_consumer_config(config))
         self.admin_client = AIOKafkaAdminClient(**KafkaSocket._build_producer_config(config))
@@ -148,16 +149,16 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
             value=self.message_encoder(message),
         )
 
-    async def subscribe(self, topic: str) -> None:
-        self.consumer.subscribe([topic])
+    async def subscribe(self, topic: list[str]) -> None:
+        self.consumer.subscribe(topic)
         logger.info(f"Subscribed to topic: {topic}")
 
-    async def unsubscribe(self, topic: str) -> None:
-        self.consumer.unsubscribe([topic])
+    async def unsubscribe(self, topic: list[str]) -> None:
+        self.consumer.unsubscribe(topic)
         logger.info(f"Unsubscribed from topic: {topic}")
 
     def _get_ephemeral_response_topic(self) -> str:
-        return f"{self.config.client_id}_request_response"
+        return f"{self.client_id}_request_response"
 
     async def request(self, message: SpaMessage) -> SpaMessage | None:
         """
@@ -180,7 +181,7 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         return response
 
 
-class KafkaSocketProvider:
+class KafkaSocketProvider(SocketProvider):
     def __init__(
         self,
         config: KafkaConfig,
@@ -190,6 +191,17 @@ class KafkaSocketProvider:
         self.config = config
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
+
+    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+        """
+        Overwrites the given config from any defaults which were provided earlier. This is useful if you want to
+        construct or change the default config
+        """
+        # normalize and set topics in config
+        topics = topics or self.config.default_subscription_topics
+        if topics is not None and isinstance(topics, str):
+            topics = [topics]
+        self.config.default_subscription_topics = topics
 
     def create_socket(self, queue: asyncio.Queue | None) -> KafkaSocket:
         return KafkaSocket(self.config, queue, self.message_decoder, self.message_encoder)
