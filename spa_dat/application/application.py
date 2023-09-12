@@ -129,7 +129,7 @@ class DistributedApplication:
         self,
         async_consumer_callback: ConsumerCallback,
         socket_provider: SocketProvider,
-        state: dict[str, Any] = None,
+        state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
         self.applications.append(
@@ -145,7 +145,7 @@ class DistributedApplication:
         self,
         async_producer_callback: ProducerCallback,
         socket_provider: SocketProvider,
-        state: dict[str, Any] = None,
+        state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
         self.applications.append(
@@ -162,7 +162,7 @@ class DistributedApplication:
         topics: list[str] | str,
         *,
         socket_provider: SocketProvider | None = None,
-        state: dict[str, Any] = None,
+        state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
         socket_provider = socket_provider or self.default_socket_provider
@@ -180,7 +180,7 @@ class DistributedApplication:
         self,
         *,
         socket_provider: SocketProvider | None = None,
-        state: dict[str, Any] = None,
+        state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
         socket_provider = socket_provider or self.default_socket_provider
