@@ -15,7 +15,7 @@ app = DistributedApplication(socket_provider)
 
 
 @app.producer()
-async def producer(socket: SpaSocket):
+async def producer(socket: SpaSocket, **kwargs):
     for i in range(10):
         await socket.publish(
             SpaMessage(

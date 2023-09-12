@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
+from typing import Any, Union
 
 from spa_dat.application.typedef import (
     ApplicationLifeCycle,
@@ -30,14 +31,16 @@ class AbstractApplication(ApplicationLifeCycle):
 
     def __init__(
         self,
-        async_callback: ProducerCallback,
+        async_callback: Union[ProducerCallback, ConsumerCallback],
         socket_provider: SocketProvider,
+        state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ) -> None:
         self.exit_stack = AsyncExitStack()
         self.callback = async_callback
         self.socket_provider = socket_provider
 
+        self.state = state
         self.ressources: dict[str, SupportedContextManagers] = ressources
 
     def setup(self):
@@ -93,7 +96,7 @@ class ProducerApplication(AbstractApplication):
         """
         Starts the callback once and after it ends the producer is done.
         """
-        await self.callback(socket=self.socket, **self.ressources)
+        await self.callback(socket=self.socket, state=self.state, **self.ressources)
 
 
 class ConsumerApplication(AbstractApplication):
@@ -108,10 +111,10 @@ class ConsumerApplication(AbstractApplication):
         """
         while True:
             message = await self._queue_in.get()
-            await self.callback(message=message, socket=self.socket, **self.ressources)
+            await self.callback(message=message, socket=self.socket, state=self.state, **self.ressources)
 
 
-class DistributedApplication(ApplicationLifeCycle):
+class DistributedApplication:
     """
     This class provides a simple interface for creating distributed applications. It allows to create multiple
     applications which are connected to the same message bus. It does this by providing decorators for creating
@@ -122,23 +125,27 @@ class DistributedApplication(ApplicationLifeCycle):
         self.applications = []
         self.default_socket_provider = default_socket_provider
 
-    def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider):
+    def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
         self.applications.append(
             ConsumerApplication(
                 async_callback=async_consumer_callback,
                 socket_provider=socket_provider,
+                state=state,
+                ressources=ressources
             )
         )
 
-    def add_producer_application(self, async_producer_callback: ProducerCallback, socket_provider: SocketProvider):
+    def add_producer_application(self, async_producer_callback: ProducerCallback, socket_provider: SocketProvider, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
         self.applications.append(
             ProducerApplication(
                 async_callback=async_producer_callback,
                 socket_provider=socket_provider,
+                state=state,
+                ressources=ressources
             )
         )
 
-    def application(self, topics: list[str] | str, *, socket_provider: SocketProvider | None = None):
+    def application(self, topics: list[str] | str, *, socket_provider: SocketProvider | None = None, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
@@ -146,17 +153,17 @@ class DistributedApplication(ApplicationLifeCycle):
         socket_provider.overwrite_config(topics=topics)
 
         def inner(callback: ConsumerCallback):
-            self.add_application(callback, socket_provider)
+            self.add_application(callback, socket_provider, state, ressources)
 
         return inner
 
-    def producer(self, *, socket_provider: SocketProvider | None = None):
+    def producer(self, *, socket_provider: SocketProvider | None = None, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
 
         def inner(callback: ProducerCallback):
-            self.add_producer_application(callback, socket_provider)
+            self.add_producer_application(callback, socket_provider, state, ressources)
 
         return inner
 

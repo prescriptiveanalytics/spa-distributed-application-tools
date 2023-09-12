@@ -5,12 +5,12 @@ from spa_dat.protocol.typedef import SpaMessage, SpaSocket
 
 
 class ProducerCallback(Protocol):
-    async def __call__(self, socket: SpaSocket, **kwargs) -> None:
+    async def __call__(self, *, socket: SpaSocket, **kwargs) -> None:
         raise NotImplementedError()
 
 
 class ConsumerCallback(Protocol):
-    async def __call__(self, message: SpaMessage, socket: SpaSocket, **kwargs) -> None:
+    async def __call__(self, *, message: SpaMessage, socket: SpaSocket, **kwargs) -> None:
         raise NotImplementedError()
 
 

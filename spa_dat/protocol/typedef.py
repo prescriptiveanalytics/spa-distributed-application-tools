@@ -3,10 +3,8 @@ import time
 from typing import Protocol
 
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 
 
-@dataclass
 class SpaSocket(Protocol):
     """
     Defines the interface for SPA applications to communicate with the message bus.
