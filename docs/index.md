@@ -22,16 +22,12 @@ It accomplishes this by providing a common interface for the message bus systems
 Configs can be provided programmatically or loaded from an URL. To programmatically provide a config use the `SocketProviderFactory.from_config` method. To load a config from an URL use the `SocketProviderFactory.from_url` method. The following example shows available configurations for each broker:
 
 ::: spa_dat.protocol.mqtt.MqttConfig
-    :showcode:
-    :language: python
-    :caption: MQTT Config
-    :name: mqtt_config
+    options:
+        show_root_toc_entry: false
 
 ::: spa_dat.protocol.kafka.KafkaConfig
-    :showcode:
-    :language: python
-    :caption: MQTT Config
-    :name: mqtt_config
+    options:
+        show_root_toc_entry: false
 
 For more detailed examples see the [examples](#examples) section.
 
@@ -41,7 +37,9 @@ Can be accomplished via `decorators`. Currently two decorators are supported: `p
 
 ::: spa_dat.application.application.DistributedApplication
     options:
+        show_root_toc_entry: false
         show_source: false
+        heading_level: 6
         members:
             - producer
             - application
@@ -56,6 +54,7 @@ All ressources (e.g. database connections, ...) are handled via `ContextManager`
 
 ::: spa_dat.application.typedef
     options:
+        show_root_toc_entry: false
         heading_level: 7
         members:
             - SupportedContextManagers
@@ -66,5 +65,7 @@ To use a Contextmanager, it is added the ressource dict in the decorator functio
 ### Supported Interaction Patterns
 
 ::: spa_dat.protocol.typedef.SpaSocket
+    options:
+        show_root_toc_entry: false
 
 It is implemented for each broker. 
