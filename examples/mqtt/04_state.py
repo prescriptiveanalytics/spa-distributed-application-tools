@@ -1,8 +1,6 @@
 import asyncio
 import logging
 
-from traitlets import Any
-
 from spa_dat.application.application import DistributedApplication
 from spa_dat.protocol.mqtt import MqttConfig
 from spa_dat.protocol.typedef import SpaMessage, SpaSocket
@@ -17,10 +15,7 @@ app = DistributedApplication(default_socket_provider=socket_provider)
 
 
 @app.producer()
-async def producer(
-    socket: SpaSocket, 
-    **kwargs
-):
+async def producer(socket: SpaSocket, **kwargs):
     for i in range(10):
         _ = await socket.request(
             SpaMessage(
@@ -36,9 +31,10 @@ class ConsumerState:
 
 @app.application("test/spa-dat-producer", state=ConsumerState())
 async def consumer(
-    message: SpaMessage, 
-    socket: SpaSocket, 
-    state: ConsumerState, 
+    message: SpaMessage,
+    socket: SpaSocket,
+    state: ConsumerState,
+    **kwargs,
 ):
     state.counter += 1
     logger.info(f"Received Request: {state.counter}")

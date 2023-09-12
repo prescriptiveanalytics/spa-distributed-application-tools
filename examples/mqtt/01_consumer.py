@@ -16,7 +16,7 @@ app = DistributedApplication(socket_provider)
 async def consumer(
     message: SpaMessage,
     # socket: SpaSocket, <- not needed but available if communication is required
-    **kwargs
+    **kwargs,
 ):
     logging.info(f"Received message: {message}")
 

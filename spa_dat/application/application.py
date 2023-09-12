@@ -125,27 +125,46 @@ class DistributedApplication:
         self.applications = []
         self.default_socket_provider = default_socket_provider
 
-    def add_application(self, async_consumer_callback: ConsumerCallback, socket_provider: SocketProvider, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
+    def add_application(
+        self,
+        async_consumer_callback: ConsumerCallback,
+        socket_provider: SocketProvider,
+        state: dict[str, Any] = None,
+        ressources: dict[str, SupportedContextManagers] = {},
+    ):
         self.applications.append(
             ConsumerApplication(
                 async_callback=async_consumer_callback,
                 socket_provider=socket_provider,
                 state=state,
-                ressources=ressources
+                ressources=ressources,
             )
         )
 
-    def add_producer_application(self, async_producer_callback: ProducerCallback, socket_provider: SocketProvider, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
+    def add_producer_application(
+        self,
+        async_producer_callback: ProducerCallback,
+        socket_provider: SocketProvider,
+        state: dict[str, Any] = None,
+        ressources: dict[str, SupportedContextManagers] = {},
+    ):
         self.applications.append(
             ProducerApplication(
                 async_callback=async_producer_callback,
                 socket_provider=socket_provider,
                 state=state,
-                ressources=ressources
+                ressources=ressources,
             )
         )
 
-    def application(self, topics: list[str] | str, *, socket_provider: SocketProvider | None = None, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
+    def application(
+        self,
+        topics: list[str] | str,
+        *,
+        socket_provider: SocketProvider | None = None,
+        state: dict[str, Any] = None,
+        ressources: dict[str, SupportedContextManagers] = {},
+    ):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
@@ -157,7 +176,13 @@ class DistributedApplication:
 
         return inner
 
-    def producer(self, *, socket_provider: SocketProvider | None = None, state: dict[str, Any] = None, ressources: dict[str, SupportedContextManagers] = {}):
+    def producer(
+        self,
+        *,
+        socket_provider: SocketProvider | None = None,
+        state: dict[str, Any] = None,
+        ressources: dict[str, SupportedContextManagers] = {},
+    ):
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
