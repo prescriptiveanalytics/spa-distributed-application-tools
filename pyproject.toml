@@ -9,7 +9,7 @@ name = "spa-dat"
 packages = [
   { include = "spa_dat" }
 ]
-version = "0.2.0"
+version = "0.2.1"
 description = "This package provides a wrapper for the message based communication of distributed applications"
 authors = [
   "Dominik Falkner <dominik.falkner@risc-software.at>"
