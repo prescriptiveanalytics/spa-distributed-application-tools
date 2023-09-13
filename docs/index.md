@@ -15,21 +15,19 @@ It accomplishes this by providing a common interface for the message bus systems
 
 !!! info Note
 
-    For more information see the examples in the [examples](examples/consumer/) section.
+    For more information see the examples in the [examples](examples/consumer.md) section.
 
 ### Configuration
 
 Configs can be provided programmatically or loaded from an URL. To programmatically provide a config use the `SocketProviderFactory.from_config` method. To load a config from an URL use the `SocketProviderFactory.from_url` method. The following example shows available configurations for each broker:
 
-::: spa_dat.protocol.mqtt.MqttConfig
+::: spa_dat.socket.mqtt.MqttConfig
     options:
         show_root_toc_entry: false
 
-::: spa_dat.protocol.kafka.KafkaConfig
+::: spa_dat.socket.kafka.KafkaConfig
     options:
         show_root_toc_entry: false
-
-For more detailed examples see the [examples](#examples) section.
 
 ### Defining a Producer or Consumer
 
@@ -46,7 +44,7 @@ Can be accomplished via `decorators`. Currently two decorators are supported: `p
 
 ### Application Context and State
 
-The application context and state are injected into the callback functions. The state is used to store the state of the application and can be user defined. An example of the state can be viewed [in the examples](examples/state/). The `SocketProvider` provides a common interface for the interaction patterns. It is used to to ineract with other applications.  
+The application context and state are injected into the callback functions. The state is used to store the state of the application and can be user defined. An example of the state can be viewed [in the examples](examples/state.md). The `SocketProvider` provides a common interface for the interaction patterns. It is used to to ineract with other applications.  
 
 ### Ressource Handling
 
@@ -64,7 +62,7 @@ To use a Contextmanager, it is added the ressource dict in the decorator functio
 
 ### Supported Interaction Patterns
 
-::: spa_dat.protocol.typedef.SpaSocket
+::: spa_dat.socket.typedef.SpaSocket
     options:
         show_root_toc_entry: false
 
