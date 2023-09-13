@@ -66,9 +66,10 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         self.message_decoder = message_decoder
         self.client_id = config.client_id or str(uuid.uuid4())
 
-        self.consumer = AIOKafkaConsumer(**KafkaSocket._build_consumer_config(config))
-        self.admin_client = AIOKafkaAdminClient(**KafkaSocket._build_producer_config(config))
-        self.producer = AIOKafkaProducer(**KafkaSocket._build_producer_config(config))
+        # clients are initialized in __aenter__ - required by framework
+        self.consumer = None
+        self.admin_client = None
+        self.producer = None
 
         self.reader_task = None
 
@@ -101,6 +102,11 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
 
     async def __aenter__(self):
         """Return `self` upon entering the runtime context."""
+        if None in [self.admin_client, self.consumer, self.producer]:
+            self.admin_client = AIOKafkaAdminClient(**KafkaSocket._build_producer_config(self.config))
+            self.consumer = AIOKafkaConsumer(**KafkaSocket._build_consumer_config(self.config))
+            self.producer = AIOKafkaProducer(**KafkaSocket._build_producer_config(self.config))
+
         await self.admin_client.start()
         await self.consumer.start()
         await self.producer.start()
