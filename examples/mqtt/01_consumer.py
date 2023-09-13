@@ -21,4 +21,13 @@ async def consumer(
     logging.info(f"Received message: {message}")
 
 
+@app.application("test/spa-dat2")
+async def consumer_2(
+    message: SpaMessage,
+    # socket: SpaSocket, <- not needed but available if communication is required
+    **kwargs,
+):
+    logging.info(f"Received message: {message}")
+
+
 app.start()

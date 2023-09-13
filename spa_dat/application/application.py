@@ -168,8 +168,7 @@ class DistributedApplication:
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
-
-        socket_provider.overwrite_config(topics=topics)
+        socket_provider = socket_provider.rebuild(topics=topics)
 
         def inner(callback: ConsumerCallback):
             self.add_application(callback, socket_provider, state, ressources)
@@ -186,6 +185,7 @@ class DistributedApplication:
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
+        socket_provider = socket_provider.rebuild(topics=None)
 
         def inner(callback: ProducerCallback):
             self.add_producer_application(callback, socket_provider, state, ressources)

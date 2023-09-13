@@ -1,9 +1,10 @@
 import asyncio
+import copy
 import json
 import logging
 import uuid
 from contextlib import AbstractAsyncContextManager
-from typing import Callable
+from typing import Callable, Self
 
 import aiomqtt
 import backoff
@@ -190,16 +191,19 @@ class MqttSocketProvider(SocketProvider):
         self.message_decoder = message_decoder
         self.message_encoder = message_encoder
 
-    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+    def rebuild(self, topics: str | list[str] | None = None, **kwargs) -> Self:
         """
-        Overwrites the given config from any defaults which were provided earlier. This is useful if you want to
-        construct or change the default config
+        Rebuilds the SocketProvider with a given configuration change. 
         """
+        new_config = copy.deepcopy(self.config)
+
         # normalize and set topics in config
         topics = topics or self.config.default_subscription_topics
         if topics is not None and isinstance(topics, str):
             topics = [topics]
-        self.config.default_subscription_topics = topics
+        new_config.default_subscription_topics = topics
+
+        return MqttSocketProvider(new_config, self.message_decoder, self.message_encoder)
 
     def create_socket(
         self,

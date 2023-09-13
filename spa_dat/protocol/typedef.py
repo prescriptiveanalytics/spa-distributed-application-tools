@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Protocol
+from typing import Protocol, Self
 
 from pydantic import BaseModel
 
@@ -42,7 +42,7 @@ class SocketProvider(Protocol):
     It also allows to add a queue for communication
     """
 
-    def overwrite_config(self, topics: str | list[str] | None = None, *kwargs) -> None:
+    def rebuild(self, topics: str | list[str] | None = None, *kwargs) -> Self:
         raise NotImplementedError()
 
     def create_socket(self, queue: asyncio.Queue | None, topics: list[str] = None) -> SpaSocket:
