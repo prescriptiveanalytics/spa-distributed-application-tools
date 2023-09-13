@@ -1,9 +1,8 @@
+import json
 import logging
 from typing import Protocol
+
 from spa_dat.socket.typedef import SpaMessage
-
-
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,7 @@ class Serializer(Protocol):
 
     def deserialize(self, data: bytes) -> SpaMessage:
         raise NotImplementedError()
+
 
 class JsonSerializer(Serializer):
     def serialize(self, message: SpaMessage) -> bytes:

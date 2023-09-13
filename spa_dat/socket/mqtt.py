@@ -9,8 +9,8 @@ import aiomqtt
 import backoff
 from pydantic.dataclasses import dataclass
 
-from spa_dat.socket.typedef import SocketProvider, SpaMessage, SpaSocket
 from spa_dat.serialization import Serializer
+from spa_dat.socket.typedef import SocketProvider, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,9 @@ async def _read_messages(
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _read_response_message(client: aiomqtt.Client, message_decoder: MessageDecoder, serializer: Serializer) -> SpaMessage | None:
+async def _read_response_message(
+    client: aiomqtt.Client, message_decoder: MessageDecoder, serializer: Serializer
+) -> SpaMessage | None:
     """
     Read a response message from the given topic. Returns None if no message was received / could not be parsed.
     Creates a new connection to avoid mixing messages with the default connection.

@@ -9,8 +9,8 @@ from typing import Callable, Self
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, ConsumerRecord
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
-from spa_dat.socket.typedef import SocketProvider, SpaMessage, SpaSocket
 from spa_dat.serialization import Serializer
+from spa_dat.socket.typedef import SocketProvider, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 
