@@ -1,11 +1,23 @@
-import json
 import logging
-
+from typing import Protocol
 from spa_dat.protocol.typedef import SpaMessage
-from spa_dat.serialization.typedef import Serializer
+
+
+import json
 
 logger = logging.getLogger(__name__)
 
+
+class Serializer(Protocol):
+    """
+    A serializer is a class which is able to serialize and deserialize a given object.
+    """
+
+    def serialize(self, obj: SpaMessage) -> bytes:
+        raise NotImplementedError()
+
+    def deserialize(self, data: bytes) -> SpaMessage:
+        raise NotImplementedError()
 
 class JsonSerializer(Serializer):
     def serialize(self, message: SpaMessage) -> bytes:
