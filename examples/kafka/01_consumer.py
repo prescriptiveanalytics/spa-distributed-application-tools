@@ -2,8 +2,8 @@ import logging
 
 from spa_dat.application.application import DistributedApplication
 from spa_dat.config import PayloadFormat, SocketConfig
-from spa_dat.protocol.kafka import KafkaConfig
-from spa_dat.protocol.typedef import SpaMessage
+from spa_dat.socket.kafka import KafkaConfig
+from spa_dat.socket.typedef import SpaMessage
 from spa_dat.provider import SocketProviderFactory
 
 logging.basicConfig(level=logging.INFO)

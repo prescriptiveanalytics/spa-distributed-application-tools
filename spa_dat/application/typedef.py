@@ -1,7 +1,7 @@
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Protocol, Union
 
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
+from spa_dat.socket.typedef import SpaMessage, SpaSocket
 
 
 class ProducerCallback(Protocol):

@@ -1,6 +1,6 @@
 import logging
 from typing import Protocol
-from spa_dat.protocol.typedef import SpaMessage
+from spa_dat.socket.typedef import SpaMessage
 
 
 import json

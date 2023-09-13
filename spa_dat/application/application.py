@@ -9,7 +9,7 @@ from spa_dat.application.typedef import (
     ProducerCallback,
     SupportedContextManagers,
 )
-from spa_dat.protocol.typedef import SocketProvider
+from spa_dat.socket.typedef import SocketProvider
 
 logger = logging.getLogger(__name__)
 

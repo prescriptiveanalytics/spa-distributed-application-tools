@@ -1,7 +1,7 @@
 from spa_dat.config import PayloadFormat, SocketConfig
-from spa_dat.protocol.kafka import KafkaConfig, KafkaSocketProvider
-from spa_dat.protocol.mqtt import MqttConfig, MqttSocketProvider
-from spa_dat.protocol.typedef import SocketProvider
+from spa_dat.socket.kafka import KafkaConfig, KafkaSocketProvider
+from spa_dat.socket.mqtt import MqttConfig, MqttSocketProvider
+from spa_dat.socket.typedef import SocketProvider
 from spa_dat.serialization import Serializer, JsonSerializer
 
 

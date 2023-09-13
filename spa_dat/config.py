@@ -3,8 +3,8 @@ from typing import Union
 
 from pydantic import BaseModel
 
-from spa_dat.protocol.kafka import KafkaConfig
-from spa_dat.protocol.mqtt import MqttConfig
+from spa_dat.socket.kafka import KafkaConfig
+from spa_dat.socket.mqtt import MqttConfig
 
 
 class PayloadFormat(Enum):

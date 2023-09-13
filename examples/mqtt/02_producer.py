@@ -3,8 +3,8 @@ import time
 
 from spa_dat.application.application import DistributedApplication
 from spa_dat.config import PayloadFormat, SocketConfig
-from spa_dat.protocol.mqtt import MqttConfig
-from spa_dat.protocol.typedef import SpaMessage, SpaSocket
+from spa_dat.socket.mqtt import MqttConfig
+from spa_dat.socket.typedef import SpaMessage, SpaSocket
 from spa_dat.provider import SocketProviderFactory
 
 logger = logging.getLogger(__name__)
