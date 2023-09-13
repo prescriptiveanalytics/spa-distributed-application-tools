@@ -15,9 +15,9 @@ class PayloadFormat(Enum):
     SIDL = "sidl"
 
 
-SupportedSockets = Union[MqttConfig, KafkaConfig]
+SupportedSocketConfigs = Union[MqttConfig, KafkaConfig]
 
 
 class SocketConfig(BaseModel):
     payload_format: PayloadFormat
-    socket_config: SupportedSockets
+    socket_config: SupportedSocketConfigs
