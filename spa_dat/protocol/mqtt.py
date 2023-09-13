@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import logging
 import uuid
 from contextlib import AbstractAsyncContextManager
@@ -11,48 +10,41 @@ import backoff
 from pydantic.dataclasses import dataclass
 
 from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
+from spa_dat.serialization.typedef import Serializer
 
 logger = logging.getLogger(__name__)
 
-MessageDecoder = Callable[[aiomqtt.Message], SpaMessage]
-MessageEncoder = Callable[[SpaMessage], bytes]
+MessageDecoder = Callable[[aiomqtt.Message], bytes]
 
 
 # region helper functions
 def _mqtt_message_decoder(message: aiomqtt.Message) -> SpaMessage:
-    # decodes the mqtt message and builds the SpaMessage from it
-    try:
-        message = SpaMessage(**json.loads(message.payload.decode()))
-        return message
-    except json.JSONDecodeError as e:
-        logger.error(f"Could not parse SPA message: {message.payload.decode()}. Error during `json.loads`: {e}")
-
-
-def _mqtt_message_encoder(message: SpaMessage) -> bytes:
     """
-    Encodes the SpaMessage into a mqtt message.
+    Decode the message value.
     """
-    return message.model_dump_json().encode("utf-8")
+    return message.payload.decode()
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _read_messages(client: aiomqtt.Client, message_queue: asyncio.Queue, message_decoder: MessageDecoder):
+async def _read_messages(
+    client: aiomqtt.Client, message_queue: asyncio.Queue, message_decoder: MessageDecoder, serializer: Serializer
+):
     async with client.messages() as messages:
         async for message in messages:
-            message = message_decoder(message)
+            message = serializer.deserialize(message_decoder(message))
             if message is not None:
                 await message_queue.put(message)
 
 
 @backoff.on_exception(backoff.expo, aiomqtt.MqttError, jitter=backoff.random_jitter, logger=logger)
-async def _read_response_message(client: aiomqtt.Client, message_decoder: MessageDecoder) -> SpaMessage | None:
+async def _read_response_message(client: aiomqtt.Client, message_decoder: MessageDecoder, serializer: Serializer) -> SpaMessage | None:
     """
     Read a response message from the given topic. Returns None if no message was received / could not be parsed.
     Creates a new connection to avoid mixing messages with the default connection.
     """
     async with client.messages() as messages:
         async for message in messages:
-            message = message_decoder(message)
+            message = serializer.deserialize(message_decoder(message))
             return message
 
 
@@ -81,15 +73,15 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         self,
         config: MqttConfig,
         message_queue: asyncio.Queue | None,
+        serializer: Serializer,
         message_decoder: MessageDecoder = _mqtt_message_decoder,
-        message_encoder: MessageEncoder = _mqtt_message_encoder,
     ) -> None:
         self.config = config
         # if no message queue is given create an internal one (for later access,
         # it contains all messages which are received from the broker)
         self.message_queue = message_queue if message_queue is not None else asyncio.Queue()
+        self.serializer = serializer
         self.message_decoder = message_decoder
-        self.message_encoder = message_encoder
         self._client_config = self.build_client_config()
         self.client = aiomqtt.Client(**self._client_config)
         self.reader_task = None
@@ -114,7 +106,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         # spawn tasks which reads messages
         if self.reader_task is None:
             self.reader_task = asyncio.create_task(
-                _read_messages(self.client, self.message_queue, self.message_decoder),
+                _read_messages(self.client, self.message_queue, self.message_decoder, self.serializer),
                 name="task-mqtt-reader",
             )
 
@@ -138,7 +130,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         return None
 
     async def publish(self, message: SpaMessage) -> None:
-        await self.client.publish(message.topic, payload=self.message_encoder(message), qos=self.config.qos)
+        await self.client.publish(message.topic, payload=self.serializer.serialize(message), qos=self.config.qos)
 
     async def subscribe(self, topic: str) -> None:
         await self.client.subscribe(topic, self.config.qos)
@@ -163,7 +155,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
             await client.subscribe(ephemeral_response_topic)
 
             # start listener for response
-            listener = _read_response_message(client, self.message_decoder)
+            listener = _read_response_message(client, self.message_decoder, self.serializer)
 
             # publish message and wait for response, set response topic
             message.response_topic = ephemeral_response_topic
@@ -184,16 +176,16 @@ class MqttSocketProvider(SocketProvider):
     def __init__(
         self,
         config: MqttConfig,
+        serializer: Serializer,
         message_decoder: MessageDecoder = _mqtt_message_decoder,
-        message_encoder: MessageEncoder = _mqtt_message_encoder,
     ) -> None:
         self.config = config
         self.message_decoder = message_decoder
-        self.message_encoder = message_encoder
+        self.serializer = serializer
 
     def rebuild(self, topics: str | list[str] | None = None, **kwargs) -> Self:
         """
-        Rebuilds the SocketProvider with a given configuration change. 
+        Rebuilds the SocketProvider with a given configuration change.
         """
         new_config = copy.deepcopy(self.config)
 
@@ -203,10 +195,10 @@ class MqttSocketProvider(SocketProvider):
             topics = [topics]
         new_config.default_subscription_topics = topics
 
-        return MqttSocketProvider(new_config, self.message_decoder, self.message_encoder)
+        return MqttSocketProvider(new_config, self.serializer, self.message_decoder)
 
     def create_socket(
         self,
         queue: asyncio.Queue | None,
     ) -> None:
-        return MqttSocket(self.config, queue, self.message_decoder, self.message_encoder)
+        return MqttSocket(self.config, queue, self.serializer, self.message_decoder)

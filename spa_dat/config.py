@@ -1,7 +1,10 @@
 from enum import Enum
-from typing import Any
+from typing import Union
 
 from pydantic import BaseModel
+
+from spa_dat.protocol.kafka import KafkaConfig
+from spa_dat.protocol.mqtt import MqttConfig
 
 
 class PayloadFormat(Enum):
@@ -12,12 +15,9 @@ class PayloadFormat(Enum):
     SIDL = "sidl"
 
 
-class SocketType(Enum):
-    MQTT = "mqtt"
-    KAFKA = "kafka"
+SupportedSockets = Union[MqttConfig, KafkaConfig]
 
 
-class Configuration(BaseModel):
+class SocketConfig(BaseModel):
     payload_format: PayloadFormat
-    socket_type: SocketType
-    socket_options: dict[str, Any]
+    socket_config: SupportedSockets

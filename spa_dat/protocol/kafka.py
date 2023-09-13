@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 import logging
 import uuid
 from contextlib import AbstractAsyncContextManager
@@ -11,43 +10,36 @@ from aiokafka import AIOKafkaConsumer, AIOKafkaProducer, ConsumerRecord
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic
 
 from spa_dat.protocol.typedef import SocketProvider, SpaMessage, SpaSocket
+from spa_dat.serialization.typedef import Serializer
 
 logger = logging.getLogger(__name__)
 
-MessageDecoder = Callable[[ConsumerRecord], SpaMessage]
+MessageDecoder = Callable[[ConsumerRecord], bytes]
 MessageEncoder = Callable[[SpaMessage], bytes]
 
 
-def _kafka_message_decoder(message: ConsumerRecord) -> SpaMessage:
-    # decodes the kafka message and builds the SpaMessage from it
-    try:
-        message = SpaMessage(**json.loads(message.value))
-        return message
-    except json.JSONDecodeError as e:
-        logger.error(f"Could not parse SPA message: {message.value}. Error during `json.loads`: {e}")
-        return None
-
-
-def _kafka_message_encoder(message: SpaMessage) -> bytes:
+def _kafka_message_decoder(message: ConsumerRecord) -> bytes:
     """
-    Encodes the SpaMessage into a kafka message.
+    Decodes the message value. Currently is very simple as only the value of the consumer record is used
     """
-    return message.model_dump_json().encode("utf-8")
+    return message.value
 
 
-async def _read_response_message(consumer: AIOKafkaConsumer, message_decoder: MessageDecoder) -> SpaMessage | None:
+async def _read_response_message(
+    consumer: AIOKafkaConsumer, message_decoder: MessageDecoder, serializer: Serializer
+) -> SpaMessage | None:
     """
     Read a response message from the given topic. Returns None if no message was received / could not be parsed.
     """
     message = await consumer.getone()
-    return message_decoder(message)
+    return serializer.deserialize(message_decoder(message))
 
 
 async def _read_messages(
-    consumer: AIOKafkaConsumer, message_queue: asyncio.Queue, message_decoder: MessageDecoder
+    consumer: AIOKafkaConsumer, message_queue: asyncio.Queue, message_decoder: MessageDecoder, serializer: Serializer
 ) -> None:
     async for message in consumer:
-        message = message_decoder(message)
+        message = serializer.deserialize(message_decoder(message))
         if message is not None:
             await message_queue.put(message)
 
@@ -64,14 +56,14 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
     def __init__(
         self,
         config: KafkaConfig,
-        message_queue: asyncio.Queue = asyncio.Queue(),
+        message_queue: asyncio.Queue | None,
+        serializer: Serializer,
         message_decoder: MessageDecoder = _kafka_message_decoder,
-        message_encoder: MessageEncoder = _kafka_message_encoder,
     ) -> None:
         self.config = config
+        self.serializer = serializer
         self.message_queue = message_queue
         self.message_decoder = message_decoder
-        self.message_encoder = message_encoder
         self.client_id = config.client_id or str(uuid.uuid4())
 
         self.consumer = AIOKafkaConsumer(**KafkaSocket._build_consumer_config(config))
@@ -116,7 +108,7 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         # spawn tasks which reads messages
         if self.reader_task is None:
             self.reader_task = asyncio.create_task(
-                _read_messages(self.consumer, self.message_queue, self.message_decoder),
+                _read_messages(self.consumer, self.message_queue, self.message_decoder, self.serializer),
                 name="task-kafka-reader",
             )
 
@@ -147,7 +139,7 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
     async def publish(self, message: SpaMessage) -> None:
         await self.producer.send_and_wait(
             topic=message.topic,
-            value=self.message_encoder(message),
+            value=self.serializer.serialize(message),
         )
 
     async def subscribe(self, topic: list[str]) -> None:
@@ -171,7 +163,7 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
             ephemeral_response_topic, **KafkaSocket._build_consumer_config(self.config)
         ) as consumer:
             # start listener for response
-            listener = _read_response_message(consumer, self.message_decoder)
+            listener = _read_response_message(consumer, self.message_decoder, self.serializer)
 
             # publish message and wait for response, set response topic
             message.response_topic = ephemeral_response_topic
@@ -179,6 +171,8 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
 
             # wait for response
             response = await listener
+
+        # return deserialized message
         return response
 
 
@@ -186,16 +180,16 @@ class KafkaSocketProvider(SocketProvider):
     def __init__(
         self,
         config: KafkaConfig,
+        serializer: Serializer,
         message_decoder: MessageDecoder = _kafka_message_decoder,
-        message_encoder: MessageEncoder = _kafka_message_encoder,
     ) -> None:
         self.config = config
+        self.serializer = serializer
         self.message_decoder = message_decoder
-        self.message_encoder = message_encoder
 
     def rebuild(self, topics: str | list[str] | None = None, *kwargs) -> Self:
         """
-        Rebuilds the SocketProvider with a given configuration change. 
+        Rebuilds the SocketProvider with a given configuration change.
         """
         new_config = copy.deepcopy(self.config)
 
@@ -205,7 +199,7 @@ class KafkaSocketProvider(SocketProvider):
             topics = [topics]
         new_config.default_subscription_topics = topics
 
-        return KafkaSocketProvider(new_config, self.message_decoder, self.message_encoder)
+        return KafkaSocketProvider(new_config, self.serializer, self.message_decoder)
 
     def create_socket(self, queue: asyncio.Queue | None) -> KafkaSocket:
-        return KafkaSocket(self.config, queue, self.message_decoder, self.message_encoder)
+        return KafkaSocket(self.config, queue, self.serializer, self.message_decoder)

@@ -1,6 +1,7 @@
 import logging
 
 from spa_dat.application.application import DistributedApplication
+from spa_dat.config import PayloadFormat, SocketConfig
 from spa_dat.protocol.kafka import KafkaConfig
 from spa_dat.protocol.typedef import SpaMessage, SpaSocket
 from spa_dat.provider import SocketProviderFactory
@@ -9,7 +10,9 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-socket_provider = SocketProviderFactory.from_config(KafkaConfig(bootstrap_servers="localhost:9092"))
+socket_provider = SocketProviderFactory.from_config(
+    SocketConfig(payload_format=PayloadFormat.JSON, socket_config=KafkaConfig(bootstrap_servers="localhost:9092"))
+)
 app = DistributedApplication(socket_provider)
 
 
