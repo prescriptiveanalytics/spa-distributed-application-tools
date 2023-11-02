@@ -22,8 +22,8 @@ async def producer(socket: SpaSocket, **kwargs):
     for i in range(10):
         _ = await socket.request(
             SpaMessage(
-                payload=f"Producer Message {i}",
-                topic="test-spa-dat-producer",
+                Payload=f"Producer Message {i}",
+                Topic="test-spa-dat-producer",
             )
         )
 
@@ -47,8 +47,8 @@ async def consumer(
 
     await socket.publish(
         SpaMessage(
-            payload=f"Response Message for {message.payload}",
-            topic=message.response_topic,
+            Payload=f"Response Message for {message.payload}",
+            Topic=message.response_topic,
         )
     )
 
