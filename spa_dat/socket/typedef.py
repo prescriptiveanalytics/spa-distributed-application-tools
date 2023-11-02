@@ -67,9 +67,9 @@ class SpaMessage(BaseModel):
             Payload=payload,
             Response_topic=response_topic,
             Content_type=content_type,
-            Client_id=client_id,
-            Client_name=client_name,
-            Quality_of_service=quality_of_service,
+            ClientId=client_id,
+            ClientName=client_name,
+            QualityOfService=quality_of_service,
             Timestamp=timestamp,
         )
 

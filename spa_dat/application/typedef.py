@@ -1,15 +1,15 @@
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Protocol, Union
 
-from spa_dat.socket.typedef import MessageFactory, SpaMessage, SpaSocket
+from spa_dat.socket.typedef import MessageBuilder, SpaMessage, SpaSocket
 
 class ProducerCallback(Protocol):
-    async def __call__(self, *, socket: SpaSocket, message_builder: MessageFactory, **kwargs) -> None:
+    async def __call__(self, *, socket: SpaSocket, message_builder: MessageBuilder, **kwargs) -> None:
         raise NotImplementedError()
 
 
 class ConsumerCallback(Protocol):
-    async def __call__(self, *, message: SpaMessage, socket: SpaSocket, message_builder: MessageFactory, **kwargs) -> None:
+    async def __call__(self, *, message: SpaMessage, socket: SpaSocket, message_builder: MessageBuilder, **kwargs) -> None:
         raise NotImplementedError()
 
 

@@ -12,7 +12,7 @@ from spa_dat.application.typedef import (
     SupportedContextManagers,
 )
 from spa_dat.socket.typedef import (
-    MessageFactory,
+    MessageBuilder,
     SocketProvider,
     SpaMessage,
 )
@@ -39,7 +39,7 @@ class AbstractApplication(ApplicationLifeCycle):
         self,
         async_callback: Union[ProducerCallback, ConsumerCallback],
         socket_provider: SocketProvider,
-        message_builder: MessageFactory,
+        message_builder: MessageBuilder,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ) -> None:
@@ -143,7 +143,7 @@ class DistributedApplication:
         self,
         async_consumer_callback: ConsumerCallback,
         socket_provider: SocketProvider,
-        message_builder: MessageFactory,
+        message_builder: MessageBuilder,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
@@ -161,7 +161,7 @@ class DistributedApplication:
         self,
         async_producer_callback: ProducerCallback,
         socket_provider: SocketProvider,
-        message_builder: MessageFactory,
+        message_builder: MessageBuilder,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
