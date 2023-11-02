@@ -104,7 +104,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
 
     async def __aenter__(self):
         """Return `self` upon entering the runtime context."""
-        await self.client.connect()
+        await self.client.__aenter__()
 
         # spawn tasks which reads messages
         if self.reader_task is None:
@@ -129,7 +129,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
             self.reader_task.cancel()
             self.reader_task = None
 
-        await self.client.disconnect()
+        await self.client.__aexit__(exc_type, exc_value, traceback)
         return None
 
     async def publish(self, message: SpaMessage) -> None:
