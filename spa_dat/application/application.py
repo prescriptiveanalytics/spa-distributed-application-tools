@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import uuid
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
+from functools import partial
 from typing import Any, Union
 
 from spa_dat.application.typedef import (
@@ -9,7 +11,11 @@ from spa_dat.application.typedef import (
     ProducerCallback,
     SupportedContextManagers,
 )
-from spa_dat.socket.typedef import SocketProvider
+from spa_dat.socket.typedef import (
+    MessageFactory,
+    SocketProvider,
+    SpaMessage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +39,14 @@ class AbstractApplication(ApplicationLifeCycle):
         self,
         async_callback: Union[ProducerCallback, ConsumerCallback],
         socket_provider: SocketProvider,
+        message_builder: MessageFactory,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ) -> None:
         self.exit_stack = AsyncExitStack()
         self.callback = async_callback
         self.socket_provider = socket_provider
+        self.message_builder = message_builder
 
         self.state = state
         self.ressources: dict[str, SupportedContextManagers] = ressources
@@ -96,7 +104,7 @@ class ProducerApplication(AbstractApplication):
         """
         Starts the callback once and after it ends the producer is done.
         """
-        await self.callback(socket=self.socket, state=self.state, **self.ressources)
+        await self.callback(socket=self.socket, message_builder=self.message_builder, state=self.state, **self.ressources)
 
 
 class ConsumerApplication(AbstractApplication):
@@ -111,7 +119,13 @@ class ConsumerApplication(AbstractApplication):
         """
         while True:
             message = await self._queue_in.get()
-            await self.callback(message=message, socket=self.socket, state=self.state, **self.ressources)
+            await self.callback(
+                message=message,
+                socket=self.socket,
+                message_builder=self.message_builder,
+                state=self.state,
+                **self.ressources,
+            )
 
 
 class DistributedApplication:
@@ -129,6 +143,7 @@ class DistributedApplication:
         self,
         async_consumer_callback: ConsumerCallback,
         socket_provider: SocketProvider,
+        message_builder: MessageFactory,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
@@ -136,6 +151,7 @@ class DistributedApplication:
             ConsumerApplication(
                 async_callback=async_consumer_callback,
                 socket_provider=socket_provider,
+                message_builder=message_builder,
                 state=state,
                 ressources=ressources,
             )
@@ -145,6 +161,7 @@ class DistributedApplication:
         self,
         async_producer_callback: ProducerCallback,
         socket_provider: SocketProvider,
+        message_builder: MessageFactory,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
     ):
@@ -152,6 +169,7 @@ class DistributedApplication:
             ProducerApplication(
                 async_callback=async_producer_callback,
                 socket_provider=socket_provider,
+                message_builder=message_builder,
                 state=state,
                 ressources=ressources,
             )
@@ -164,14 +182,19 @@ class DistributedApplication:
         socket_provider: SocketProvider | None = None,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
+        client_id: str = str(uuid.uuid4()),
+        client_name: str = None,
     ):
+        # prebuilt message factory
+        msg_factory = partial(SpaMessage.build, client_id=client_id, client_name=client_name)
+
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
         socket_provider = socket_provider.rebuild(topics=topics)
 
         def inner(callback: ConsumerCallback):
-            self.add_application(callback, socket_provider, state, ressources)
+            self.add_application(callback, socket_provider, msg_factory, state, ressources)
 
         return inner
 
@@ -181,14 +204,19 @@ class DistributedApplication:
         socket_provider: SocketProvider | None = None,
         state: Any = None,
         ressources: dict[str, SupportedContextManagers] = {},
+        client_id: str = str(uuid.uuid4()),
+        client_name: str = None,
     ):
+        # prebuilt message factory
+        msg_factory = partial(SpaMessage.build, client_id=client_id, client_name=client_name)
+
         socket_provider = socket_provider or self.default_socket_provider
         if socket_provider is None:
             raise ValueError("No socket provider found. Either set the default in the constructor or here!")
         socket_provider = socket_provider.rebuild(topics=None)
 
         def inner(callback: ProducerCallback):
-            self.add_producer_application(callback, socket_provider, state, ressources)
+            self.add_producer_application(callback, socket_provider, msg_factory, state, ressources)
 
         return inner
 

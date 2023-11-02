@@ -143,6 +143,9 @@ class KafkaSocket(SpaSocket, AbstractAsyncContextManager):
         return None
 
     async def publish(self, message: SpaMessage) -> None:
+        if message.client_id is None:
+            message.client_id = self.client_id
+
         await self.producer.send_and_wait(
             topic=message.topic,
             value=self.serializer.serialize(message),

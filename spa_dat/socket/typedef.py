@@ -1,6 +1,7 @@
 import asyncio
 import time
-from typing import Protocol, Self
+from enum import Enum
+from typing import Callable, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_pascal
@@ -24,28 +25,58 @@ class SpaSocket(Protocol):
         raise NotImplementedError()
 
 
+class QualityOfService(Enum):
+    at_most_once = 0
+    at_least_once = 1
+    exactly_once = 2
+
+
 class SpaMessage(BaseModel):
     """
     Defines the message for SPA applications
     """
+
     model_config = ConfigDict(alias_generator=to_pascal)
 
     payload: bytes
     topic: str
-    # content type of the payload
     content_type: str | None = None
-    # uuid of the client
     client_id: str | None = None
-    # name of the client
     client_name: str | None = None
-    # enum
-    # 0: at most once
-    # 1: at least once
-    # 2: exactly once
-    quality_of_service: int = 2
+    quality_of_service: QualityOfService = 2
     response_topic: str | None = None
     timestamp: int = int(time.time())
 
+    @staticmethod
+    def build(
+        topic: str,
+        payload: bytes,
+        *,
+        response_topic: str | None = None,
+        content_type: str | None = None,
+        client_id: str | None = None,
+        client_name: str | None = None,
+        quality_of_service: QualityOfService = 2,
+        timestamp: int = int(time.time()),
+    ) -> Self:
+        """
+            Function for building a message, necessary because the constructor of pydantic models does not follow python conventions
+        """
+        return SpaMessage(
+            Topic=topic,
+            Payload=payload,
+            Response_topic=response_topic,
+            Content_type=content_type,
+            Client_id=client_id,
+            Client_name=client_name,
+            Quality_of_service=quality_of_service,
+            Timestamp=timestamp,
+        )
+
+
+MessageBuilder = Callable[
+    [str, bytes, str | None, str | None, str | None, str | None, QualityOfService, int], SpaMessage
+]
 
 
 class SocketProvider(Protocol):

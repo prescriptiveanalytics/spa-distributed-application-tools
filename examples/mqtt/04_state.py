@@ -5,7 +5,7 @@ from spa_dat.application.application import DistributedApplication
 from spa_dat.config import PayloadFormat, SocketConfig
 from spa_dat.provider import SocketProviderFactory
 from spa_dat.socket.mqtt import MqttConfig
-from spa_dat.socket.typedef import SpaMessage, SpaSocket
+from spa_dat.socket.typedef import MessageBuilder, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -18,12 +18,12 @@ app = DistributedApplication(default_socket_provider=socket_provider)
 
 
 @app.producer()
-async def producer(socket: SpaSocket, **kwargs):
+async def producer(socket: SpaSocket, message_builder: MessageBuilder, **kwargs):
     for i in range(10):
         _ = await socket.request(
-            SpaMessage(
-                Payload=f"Producer Message {i}",
-                Topic="test/spa-dat-producer",
+            message_builder(
+                payload=f"Producer Message {i}",
+                topic="test/spa-dat-producer",
             )
         )
 
@@ -35,6 +35,7 @@ class ConsumerState:
 @app.application("test/spa-dat-producer", state=ConsumerState())
 async def consumer(
     message: SpaMessage,
+    message_builder: MessageBuilder,
     socket: SpaSocket,
     state: ConsumerState,
     **kwargs,
@@ -46,9 +47,9 @@ async def consumer(
     await asyncio.sleep(1)
 
     await socket.publish(
-        SpaMessage(
-            Payload=f"Response Message for {message.payload}",
-            Topic=message.response_topic,
+        message_builder(
+            payload=f"Response Message for {message.payload}",
+            topic=message.response_topic,
         )
     )
 

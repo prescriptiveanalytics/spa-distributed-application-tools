@@ -84,7 +84,8 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         self.message_queue = message_queue if message_queue is not None else asyncio.Queue()
         self.serializer = serializer
         self.message_decoder = message_decoder
-        self._client_config = self.build_client_config()
+        self.client_id = config.client_id or str(uuid.uuid4())
+        self._client_config = self.build_client_config(config.client_id or self.client_id)
         self.client = aiomqtt.Client(**self._client_config)
         self.reader_task = None
 
@@ -143,7 +144,7 @@ class MqttSocket(SpaSocket, AbstractAsyncContextManager):
         logger.info(f"Unsubscribed from topic: {topic}")
 
     def _get_ephemeral_response_topic(self, topic: str) -> str:
-        return f"{topic}/request/{uuid.uuid4()}"
+        return f"{topic}/request/{self.client_id}"
 
     async def request(self, message: SpaMessage) -> SpaMessage | None:
         """

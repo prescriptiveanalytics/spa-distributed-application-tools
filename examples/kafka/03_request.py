@@ -5,7 +5,7 @@ from spa_dat.application.application import DistributedApplication
 from spa_dat.config import PayloadFormat, SocketConfig
 from spa_dat.provider import SocketProviderFactory
 from spa_dat.socket.kafka import KafkaConfig
-from spa_dat.socket.typedef import SpaMessage, SpaSocket
+from spa_dat.socket.typedef import MessageBuilder, SpaMessage, SpaSocket
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -18,14 +18,14 @@ app = DistributedApplication(default_socket_provider=socket_provider)
 
 
 @app.application("test-spa-dat-producer")
-async def consumer(message: SpaMessage, socket: SpaSocket, **kwargs):
+async def consumer(message: SpaMessage, message_builder: MessageBuilder, socket: SpaSocket, **kwargs):
     logger.info(f"Received Request: {message.payload}")
 
     # simulate long running request
     await asyncio.sleep(1)
 
     await socket.publish(
-        SpaMessage(
+        message_builder(
             Payload=f"Response Message for {message.payload}",
             Topic=message.response_topic,
         )
@@ -33,11 +33,11 @@ async def consumer(message: SpaMessage, socket: SpaSocket, **kwargs):
 
 
 @app.producer()
-async def producer(socket: SpaSocket, **kwargs):
+async def producer(socket: SpaSocket, message_builder: MessageBuilder, **kwargs):
     for i in range(10):
         logger.info("Sending Request")
         response = await socket.request(
-            SpaMessage(
+            message_builder(
                 Payload=f"Producer Message {i}",
                 Topic="test-spa-dat-producer",
             )
