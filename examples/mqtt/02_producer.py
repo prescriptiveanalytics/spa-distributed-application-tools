@@ -22,9 +22,8 @@ async def producer(socket: SpaSocket, **kwargs):
     for i in range(10):
         await socket.publish(
             SpaMessage(
-                payload=f"Producer Message {i}",
-                topic="test/spa-dat",
-                timestamp=int(time.time()),
+                Payload=f"Producer Message {i}",
+                Topic="test/spa-dat",
             )
         )
 

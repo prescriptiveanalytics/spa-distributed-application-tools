@@ -21,7 +21,7 @@ class Serializer(Protocol):
 
 class JsonSerializer(Serializer):
     def serialize(self, message: SpaMessage) -> bytes:
-        return message.model_dump_json().encode("utf-8")
+        return message.model_dump_json(by_alias=True).encode("utf-8")
 
     def deserialize(self, message: bytes | None) -> SpaMessage:
         if message is None:

@@ -23,8 +23,8 @@ async def producer(socket: SpaSocket, **kwargs):
         logger.info("Sending Request")
         response = await socket.request(
             SpaMessage(
-                payload=f"Producer Message {i}",
-                topic="test/spa-dat-producer",
+                Payload=f"Producer Message {i}",
+                Topic="test/spa-dat-producer",
             )
         )
         logging.info(f"Received Response: {response.payload}")
@@ -39,8 +39,8 @@ async def consumer(message: SpaMessage, socket: SpaSocket, **kwargs):
 
     await socket.publish(
         SpaMessage(
-            payload=f"Response Message for {message.payload}",
-            topic=message.response_topic,
+            Payload=f"Response Message for {message.payload}",
+            Topic=message.response_topic,
         )
     )
 
